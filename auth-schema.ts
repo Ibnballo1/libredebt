@@ -1,16 +1,6 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  integer,
-  boolean,
-  index,
-  char,
-} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { subscriptionTierEnum } from "./enums";
+import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
-// ─── BETTERAUTH GENERATED CORES ──────────────────────────────────────────────
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -20,14 +10,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
-    .$onUpdate(() => new Date())
+    .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-
-  /**
-   * NOTE: Custom fields generated via BetterAuth plugins can safely remain
-   * here to maintain plugin alignment, but your core feature gating logic
-   * will still treat 'user_profiles' as the extended source of truth.
-   */
   subscriptionTier: text("subscription_tier").default("free"),
   currency: text("currency").default("NGN"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
@@ -41,7 +25,7 @@ export const sessions = pgTable(
     token: text("token").notNull().unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
-      .$onUpdate(() => new Date())
+      .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
@@ -70,7 +54,7 @@ export const accounts = pgTable(
     password: text("password"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
-      .$onUpdate(() => new Date())
+      .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
   (table) => [index("accounts_userId_idx").on(table.userId)],
@@ -86,75 +70,27 @@ export const verifications = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
-      .$onUpdate(() => new Date())
+      .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
   (table) => [index("verifications_identifier_idx").on(table.identifier)],
 );
 
-// ─── LIBREDEBT APPLICATION EXTENSION ─────────────────────────────────────────
-export const userProfiles = pgTable("user_profiles", {
-  /**
-   * Linked Primary Key. Enforces 1:1 integrity with BetterAuth users table.
-   * Cascade delete ensures profiles drop if a user requests account deletion.
-   */
-  id: text("id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-
-  subscriptionTier: subscriptionTierEnum("subscription_tier")
-    .notNull()
-    .default("free"),
-
-  /**
-   * Hardened display currency constraint to exact ISO-3 characters.
-   */
-  currency: char("currency", { length: 3 }).notNull().default("NGN"),
-
-  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
-
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdateFn(() => new Date()),
-});
-
-// ─── DRIZZLE APPMAP RELATIONS ────────────────────────────────────────────────
-export const usersRelations = relations(users, ({ one, many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
-  profile: one(userProfiles, {
-    fields: [users.id],
-    references: [userProfiles.id],
-  }),
-}));
-
-export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
-  user: one(users, {
-    fields: [userProfiles.id],
-    references: [users.id],
-  }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, {
+  users: one(users, {
     fields: [sessions.userId],
     references: [users.id],
   }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
-  user: one(users, {
+  users: one(users, {
     fields: [accounts.userId],
     references: [users.id],
   }),
 }));
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-export type UserProfile = typeof userProfiles.$inferSelect;
-export type NewUserProfile = typeof userProfiles.$inferInsert;
