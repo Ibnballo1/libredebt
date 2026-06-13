@@ -29,6 +29,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { env } from "@/lib/env";
+import { onUserCreated } from "./auth-hooks";
 
 export const auth = betterAuth({
   /**
@@ -95,6 +96,13 @@ export const auth = betterAuth({
        * We only need basic profile + email — nothing invasive.
        */
       scope: ["openid", "email", "profile"],
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          after: onUserCreated,
+        },
+      },
     },
   },
 
