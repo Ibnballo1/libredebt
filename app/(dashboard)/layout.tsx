@@ -39,11 +39,23 @@ export default async function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Desktop Navigation Drawer (Hidden on Viewports < 1024px) */}
       <div className="hidden lg:flex lg:w-64 lg:flex-shrink-0 lg:flex-col border-r border-slate-200 dark:border-slate-800">
-        <Sidebar user={session.user} />
+        <Sidebar
+          user={{
+            ...session.user,
+            subscriptionTier: session.user.subscriptionTier ?? undefined,
+          }}
+        />
       </div>
 
       {/* Responsive Structural Viewport Wrapper Core */}
-      <DashboardShell user={session.user}>{children}</DashboardShell>
+      <DashboardShell
+        user={{
+          ...session.user,
+          subscriptionTier: session.user.subscriptionTier ?? undefined,
+        }}
+      >
+        {children}
+      </DashboardShell>
     </div>
   );
 }
