@@ -43,16 +43,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     usePlural: true,
-    schema: {
-      /**
-       * Tell BetterAuth which schema objects are ours.
-       * BetterAuth will create and manage these tables.
-       */
-      user: schema.users,
-      session: schema.sessions,
-      account: schema.accounts,
-      verification: schema.verifications,
-    },
+    schema: schema,
   }),
 
   /**
@@ -97,10 +88,19 @@ export const auth = betterAuth({
        */
       scope: ["openid", "email", "profile"],
     },
-    databaseHooks: {
-      user: {
-        create: {
-          after: onUserCreated,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // BetterAuth expects the hook signature (user, context).
+        // Wrap our existing onUserCreated which accepts a single context
+        // object (OnUserCreatedContext) so types align.
+        after: async (user, context) => {
+          // Merge user into the context object expected by our hook.
+          // Use any to avoid widening type issues here in this wrapper.
+          await onUserCreated({ ...context, user } as Parameters<
+            typeof onUserCreated
+          >[0]);
         },
       },
     },
