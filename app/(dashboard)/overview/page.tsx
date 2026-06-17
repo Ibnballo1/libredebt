@@ -14,12 +14,17 @@ import { StatCard, EmptyState, DebtLimitBanner } from "@/components/shared";
 import { getDashboardStats } from "@/server/services/dashboard.service";
 import { FREE_PLAN_DEBT_LIMIT } from "@/server/services/access.service";
 import { formatCurrency, calculateProgressPercent } from "@/lib/utils";
+import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 
 export const metadata: Metadata = {
   title: "Overview",
 };
 
-export default async function OverviewPage() {
+export default async function OverviewPage({
+  onMobileMenuClick,
+}: {
+  onMobileMenuClick?: () => void;
+}) {
   const user = await requireUser();
   const tier = user.subscriptionTier as "free" | "pro";
   const currency = user.currency ?? "NGN";
@@ -41,7 +46,7 @@ export default async function OverviewPage() {
   return (
     <div className="flex flex-col flex-1 min-w-0">
       {/* ─── Global Application Shell Header ───────────────────────────────── */}
-      <Navbar
+      <NavbarWrapper
         title="Overview"
         description={`Welcome back, ${capitalizedFirstName}`}
         tier={tier}

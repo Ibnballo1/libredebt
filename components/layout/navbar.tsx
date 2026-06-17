@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 import { ProUpgradeBadge } from "@/components/shared/pro-upgrade-badge";
 import { cn } from "@/lib/utils";
+import { useMobileMenu } from "@/context/mobile-menu";
 
 type NavbarProps = {
   title: string;
@@ -20,7 +21,6 @@ type NavbarProps = {
   /** Flexible contextual button injectors (e.g., "New Transaction") */
   actions?: React.ReactNode;
   tier?: "free" | "pro";
-  onMobileMenuClick?: () => void;
 };
 
 export function Navbar({
@@ -29,15 +29,15 @@ export function Navbar({
   breadcrumb,
   actions,
   tier = "free",
-  onMobileMenuClick,
 }: NavbarProps) {
+  const { openMenu } = useMobileMenu();
   const hasBreadcrumbs = breadcrumb && breadcrumb.length > 0;
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center border-b border-slate-200 bg-white/80 backdrop-blur-md px-6 gap-4 dark:border-slate-800 dark:bg-slate-950/80">
       {/* Mobile Responsive Hamburger Drawer Trigger */}
       <button
-        onClick={onMobileMenuClick}
+        onClick={openMenu}
         className="inline-flex lg:hidden items-center justify-center h-9 w-9 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
         aria-label="Toggle structural navigation drawer"
       >

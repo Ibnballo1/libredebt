@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * components/layout/sidebar.tsx
  *
@@ -19,9 +21,9 @@ interface SidebarProps {
   };
 }
 
-export async function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user }: SidebarProps) {
   return (
-    <aside className="flex h-full w-64 flex-col bg-slate-900 dark:bg-zinc-950">
+    <aside className="flex h-full w-64 flex-col pointer-events-auto bg-slate-900 dark:bg-zinc-950">
       {/* ─── Brand Logo Branding Container ─────────────────────────── */}
       <div className="flex h-16 items-center border-b border-slate-800 px-6">
         <Link href="/overview" className="flex items-center gap-2.5 group">
