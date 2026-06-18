@@ -18,11 +18,11 @@ import { EmptyState } from "@/components/shared";
 
 type LedgerEntry = {
   id: string;
-  type: "opening" | "payment" | "adjustment";
+  type: "opening" | "payment" | "interest" | "fee" | "adjustment" | "reversal";
   amountMinor: number;
   note: string | null;
   effectiveDate: Date;
-  recordedBy: "user" | "system";
+  recordedBy: "user" | "system" | "job";
 };
 
 type LedgerHistoryListProps = {
@@ -34,13 +34,19 @@ function EntryTypeBadge({ type }: { type: LedgerEntry["type"] }) {
   const styles = {
     opening: "bg-[#F1F5F9] text-[#64748B]",
     payment: "bg-[#F0FDF9] text-[#10B981]",
+    interest: "bg-[#FEF3C7] text-[#D97706]",
+    fee: "bg-[#F3E8FF] text-[#7C3AED]",
     adjustment: "bg-amber-50 text-amber-600",
+    reversal: "bg-[#FEE2E2] text-[#DC2626]",
   };
 
   const labels = {
     opening: "Opening",
     payment: "Payment",
+    interest: "Interest",
+    fee: "Fee",
     adjustment: "Adjustment",
+    reversal: "Reversal",
   };
 
   return (
@@ -120,6 +126,11 @@ export function LedgerHistoryList({
                     auto
                   </span>
                 )}
+                {entry.recordedBy === "job" && (
+                  <span className="text-[9px] text-[#CBD5E1] font-medium">
+                    scheduled
+                  </span>
+                )}
               </div>
 
               {entry.note && (
@@ -163,6 +174,15 @@ export function LedgerHistoryList({
                 <p className="text-[10px] text-[#94A3B8] mt-0.5">
                   starting balance
                 </p>
+              )}
+              {entry.type === "interest" && (
+                <p className="text-[10px] text-[#D97706] mt-0.5">interest</p>
+              )}
+              {entry.type === "fee" && (
+                <p className="text-[10px] text-[#7C3AED] mt-0.5">fee</p>
+              )}
+              {entry.type === "reversal" && (
+                <p className="text-[10px] text-[#DC2626] mt-0.5">reversal</p>
               )}
             </div>
           </div>
