@@ -1,0 +1,145 @@
+/**
+ * server/actions/debt.actions.ts
+ *
+ * Next.js Server Actions for all debt mutations.
+ *
+ * EVERY ACTION FOLLOWS THIS SEQUENCE:
+ *   1. Authenticate     — middleware verifies session, provides userId + tier
+ *   2. Validate input   — next-safe-action parses with Zod schema
+ *   3. Gate feature     — subscription tier check (server-side, unfakeable)
+ *   4. Execute service  — business logic + atomic DB writes
+ *   5. Revalidate cache — Next.js refreshes affected Server Component pages
+ *   6. Return result    — typed { success, error?, data? }
+ *
+ * next-safe-action v8 API:
+ *   createSafeActionClient() → .use() for middleware → .inputSchema() → .action()
+ */
+
+"use server";
+
+import { z } from "zod";
+import { createSafeActionClient } from "next-safe-action";
+import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth-session";
+import { checkFeatureAccess } from "@/server/services/access.service";
+import {
+  createDebt,
+  editDebt,
+  archiveDebtById,
+  recordPayment,
+} from "@/server/services/debt.service";
+import {
+  createDebtSchema,
+  editDebtSchema,
+  archiveDebtSchema,
+  recordPaymentSchema,
+} from "@/server/validators/debt.schema";
+
+// ─── Authenticated action client ──────────────────────────────────────────────
+// Every action built with this client gets userId + subscriptionTier in ctx.
+
+const authAction = createSafeActionClient().use(async ({ next }) => {
+  const user = await requireUser();
+  return next({
+    ctx: {
+      userId: user.id,
+      subscriptionTier: (user.subscriptionTier ?? "free") as "free" | "pro",
+    },
+  });
+});
+
+// ─── Create Debt ──────────────────────────────────────────────────────────────
+
+export const createDebtAction = authAction
+  .inputSchema(createDebtSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const { userId, subscriptionTier } = ctx;
+
+    // Server-side subscription gate — cannot be bypassed via UI manipulation
+    const access = await checkFeatureAccess(
+      userId,
+      subscriptionTier,
+      "CREATE_DEBT",
+    );
+    if (!access.allowed) {
+      return {
+        success: false as const,
+        error: access.reason,
+        code: access.code,
+      };
+    }
+
+    const result = await createDebt(userId, parsedInput);
+    if (!result.success) {
+      return { success: false as const, error: result.error };
+    }
+
+    revalidatePath("/debts");
+    revalidatePath("/overview");
+
+    return { success: true as const, debtId: result.debtId };
+  });
+
+// ─── Edit Debt ────────────────────────────────────────────────────────────────
+
+// Extend edit schema with debtId (the target to edit)
+const editDebtActionSchema = editDebtSchema.extend({
+  debtId: z.string().min(1, "Debt ID is required"),
+});
+
+export const editDebtAction = authAction
+  .inputSchema(editDebtActionSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const { userId } = ctx;
+    const { debtId, ...editInput } = parsedInput;
+
+    const result = await editDebt(userId, debtId, editInput);
+    if (!result.success) {
+      return { success: false as const, error: result.error };
+    }
+
+    revalidatePath("/debts");
+    revalidatePath(`/debts/${debtId}`);
+    revalidatePath("/overview");
+
+    return { success: true as const };
+  });
+
+// ─── Archive Debt ─────────────────────────────────────────────────────────────
+
+export const archiveDebtAction = authAction
+  .inputSchema(archiveDebtSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const { userId } = ctx;
+
+    const result = await archiveDebtById(userId, parsedInput.debtId);
+    if (!result.success) {
+      return { success: false as const, error: result.error };
+    }
+
+    revalidatePath("/debts");
+    revalidatePath("/overview");
+
+    return { success: true as const };
+  });
+
+// ─── Record Payment ───────────────────────────────────────────────────────────
+
+export const recordPaymentAction = authAction
+  .inputSchema(recordPaymentSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const { userId } = ctx;
+
+    // recordPayment is always allowed — no subscription gate needed
+    const result = await recordPayment(userId, parsedInput);
+    if (!result.success) {
+      return { success: false as const, error: result.error };
+    }
+
+    revalidatePath("/debts");
+    revalidatePath(`/debts/${parsedInput.debtId}`);
+    revalidatePath("/overview");
+    revalidatePath("/payments");
+
+    return { success: true as const, ledgerEntryId: result.ledgerEntryId };
+  });
