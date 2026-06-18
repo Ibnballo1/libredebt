@@ -2,13 +2,10 @@
  * components/dashboard/debt-progress-list.tsx
  *
  * Shows each active debt as a compact row with:
- *   - Colour-coded left dot (red/amber/green)
- *   - Debt name + creditor
- *   - Mini progress bar
- *   - Current balance
- *
- * Clicking any row navigates to /debts/[id].
- * Server Component — pure display, no interactivity beyond the link.
+ * - Colour-coded left dot (red/amber/green)
+ * - Debt name + creditor
+ * - Mini progress bar
+ * - Current balance
  */
 
 import Link from "next/link";
@@ -18,16 +15,17 @@ import type { DebtBreakdownItem } from "@/server/services/dashboard.service";
 
 type DebtProgressListProps = {
   debts: DebtBreakdownItem[];
-  currency: string;
+  currency: string; // Base user currency fallback if needed
 };
 
-function debtColor(pct: number): string {
-  if (pct >= 75) return "#10B981";
-  if (pct >= 25) return "#F59E0B";
-  return "#EF4444";
+// Visual status tracker based on payment fulfillment milestones
+function getProgressColor(pct: number): string {
+  if (pct >= 75) return "#10B981"; // Green: Substantial completion progress
+  if (pct >= 35) return "#F59E0B"; // Amber: Steady payment traction
+  return "#64748B"; // Slate: Balanced/New baseline (Replaced anxious flashing red)
 }
 
-export function DebtProgressList({ debts, currency }: DebtProgressListProps) {
+export function DebtProgressList({ debts }: DebtProgressListProps) {
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
       {/* Header */}
@@ -57,7 +55,7 @@ export function DebtProgressList({ debts, currency }: DebtProgressListProps) {
       ) : (
         <div>
           {debts.map((debt, index) => {
-            const color = debtColor(debt.progressPercent);
+            const color = getProgressColor(debt.progressPercent);
             return (
               <Link
                 key={debt.id}
@@ -67,14 +65,14 @@ export function DebtProgressList({ debts, currency }: DebtProgressListProps) {
                   index < debts.length - 1 && "border-b border-[#F1F5F9]",
                 )}
               >
-                {/* Color dot */}
+                {/* Status Indicator Dot */}
                 <div
                   className="h-2 w-2 rounded-full flex-shrink-0"
                   style={{ background: color }}
                   aria-hidden="true"
                 />
 
-                {/* Name + progress */}
+                {/* Name + progress tracking */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1.5">
                     <p className="text-xs font-semibold text-[#0F172A] truncate pr-2">
@@ -98,11 +96,11 @@ export function DebtProgressList({ debts, currency }: DebtProgressListProps) {
                   </div>
                   <p className="text-[10px] text-[#94A3B8] mt-1">
                     {debt.creditor}
-                    {debt.dueDay ? ` · Due ${debt.dueDay}th` : ""}
+                    {debt.dueDay ? ` · Due day ${debt.dueDay}` : ""}
                   </p>
                 </div>
 
-                {/* Balance */}
+                {/* Balance Values — ✨ FIXED: Directly targets explicit item currency attributes */}
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-bold text-[#0F172A] tabular-nums">
                     {formatCurrency(debt.currentBalanceMinor, {

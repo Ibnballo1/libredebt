@@ -7,24 +7,23 @@
  * Payments are always negative in the ledger.
  * We display the absolute value with a green colour
  * to communicate that money was paid (positive action).
- *
- * Server Component — no interactivity needed.
  */
 
 import Link from "next/link";
 import { Receipt } from "lucide-react";
-import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  formatRelativeTime,
+  cn,
+} from "@/lib/utils";
 import type { RecentPayment } from "@/server/services/dashboard.service";
 
 type RecentActivityFeedProps = {
   payments: RecentPayment[];
-  currency: string;
 };
 
-export function RecentActivityFeed({
-  payments,
-  currency,
-}: RecentActivityFeedProps) {
+export function RecentActivityFeed({ payments }: RecentActivityFeedProps) {
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
       {/* Header */}
@@ -55,21 +54,18 @@ export function RecentActivityFeed({
           </p>
         </div>
       ) : (
-        <div>
-          {payments.map((payment, index) => {
+        <div className="divide-y divide-[#F1F5F9]">
+          {payments.map((payment) => {
             const absAmount = Math.abs(payment.amountMinor);
+            const dateObject = new Date(payment.effectiveDate);
 
             return (
               <Link
                 key={payment.id}
                 href={`/debts/${payment.debtId}`}
                 className="flex items-start gap-3.5 px-5 py-3.5 transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:bg-[#F8FAFC]"
-                style={{
-                  borderBottom:
-                    index < payments.length - 1 ? "1px solid #F1F5F9" : "none",
-                }}
               >
-                {/* Icon */}
+                {/* Visual indicator tag */}
                 <div
                   className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#F0FDF9] mt-0.5"
                   aria-hidden="true"
@@ -77,7 +73,7 @@ export function RecentActivityFeed({
                   <span className="text-xs font-bold text-[#10B981]">↓</span>
                 </div>
 
-                {/* Details */}
+                {/* Details breakdown */}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[#0F172A] truncate">
                     {payment.debtName}
@@ -88,16 +84,15 @@ export function RecentActivityFeed({
                     </p>
                   )}
                   <time
-                    dateTime={payment.effectiveDate.toISOString()}
+                    dateTime={dateObject.toISOString()}
                     className="text-[10px] text-[#94A3B8] mt-0.5 block"
-                    title={formatDate(payment.effectiveDate, "long")}
+                    title={formatDate(dateObject, "long")}
                   >
-                    {formatDate(payment.effectiveDate)} ·{" "}
-                    {formatRelativeTime(payment.effectiveDate)}
+                    {formatDate(dateObject)} · {formatRelativeTime(dateObject)}
                   </time>
                 </div>
 
-                {/* Amount */}
+                {/* Currency Values — Correctly references localized transaction token parameters */}
                 <div className="flex-shrink-0 text-right">
                   <p className="text-xs font-bold text-[#10B981] tabular-nums">
                     −{formatCurrency(absAmount, { currency: payment.currency })}

@@ -1,82 +1,114 @@
 /**
- * server/repositories/debt.repository.ts
+ * server/repositories/debt.repository.ts — DEFINITIVE FIX
  *
- * All database queries for the debt domain.
+ * ROOT CAUSE:
+ * The previous version used Drizzle's sql`` tagged template to embed
+ * a correlated subquery for balance calculation:
  *
- * WHY A SEPARATE REPOSITORY LAYER?
- * Server Actions call Services. Services call Repositories.
- * Repositories are the ONLY place that touches the database.
+ *   sql`COALESCE((SELECT SUM(${ledgerEntries.amountMinor})
+ *               FROM ${ledgerEntries}
+ *               WHERE ${ledgerEntries.debtId} = ${debts.id}  ← PROBLEM
+ *                 AND ${ledgerEntries.userId} = ${userId}), 0)`
  *
- * This separation means:
- *   - Business logic (service) is testable without a real database
- *   - Changing a query only changes one file
- *   - The query patterns are consistent and auditable
+ * Drizzle's sql template treats ${debts.id} as a BOUND PARAMETER (a value
+ * to be substituted at execution time), NOT as a correlated column reference
+ * to the outer query's `debts.id` column. The resulting SQL is:
  *
- * SECURITY: Every query filters by userId. Even if a Server Action
- * somehow received a wrong debtId, the userId filter ensures
- * a user can never read or modify another user's data.
- * Supabase RLS is the second enforcement layer.
+ *   COALESCE((SELECT SUM(amount_minor) FROM ledger_entries
+ *             WHERE debt_id = $1 AND user_id = $2), 0)
  *
- * TRANSACTION SUPPORT:
- * Functions accept an optional `tx` parameter (transaction client).
- * This allows the service layer to run multiple repository operations
- * inside a single atomic transaction — critical for the ledger pattern
- * (create debt + create opening ledger entry must succeed or fail together).
+ * where $1 is bound to undefined/null because debts.id has no runtime value
+ * in this context — it's a schema column descriptor, not an actual UUID.
+ *
+ * Result: WHERE clause matches nothing → SUM(nothing) = NULL
+ *         → COALESCE(NULL, 0) = 0
+ *         → currentBalanceMinor = 0 on EVERY debt
+ *         → progress = 100% on every new debt
+ *
+ * THE FIX:
+ * Remove all correlated subqueries. Instead, fetch debts and ledger
+ * balances in two separate queries and join them in JavaScript.
+ * This is explicit, debuggable, and works correctly with Drizzle's ORM.
  */
 
 import { db } from "@/db";
 import { debts, ledgerEntries } from "@/db/schema";
-import { eq, and, count, sql, desc } from "drizzle-orm";
-// Derive Database type from the db instance to avoid importing a missing export
-type Database = typeof db;
+import { eq, and, count, sum, desc } from "drizzle-orm";
+// Derive the transaction client type from the actual `db` instance so we don't
+// rely on an exported Database type from "@/db" (which may not exist).
+type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-// Transaction client type — matches what Drizzle passes inside .transaction()
-type TxClient = Parameters<Parameters<Database["transaction"]>[0]>[0];
-
-// ─── Read queries ──────────────────────────────────────────────────────────────
+// ─── Internal helper: fetch balance map for a user's debts ───────────────────
 
 /**
- * Get all active debts for a user, ordered by creation date (newest first).
- * Includes computed current balance from ledger entries.
+ * Returns a Map<debtId, currentBalanceMinor> for all the given debt IDs.
+ *
+ * Uses a single GROUP BY query — one database round-trip, no subqueries,
+ * no correlated references. Drizzle handles this pattern correctly.
+ *
+ * The balance for each debt is the SUM of all its ledger entries:
+ *   Opening entry:  +originalAmount  (positive)
+ *   Payment entry:  -paymentAmount   (negative)
+ *   Net balance:     currentBalance  (what the user still owes)
  */
-export async function getActiveDebtsByUserId(userId: string, tx?: TxClient) {
+async function fetchBalanceMap(
+  userId: string,
+  tx?: TxClient,
+): Promise<Map<string, number>> {
   const client = tx ?? db;
 
   const rows = await client
     .select({
-      id: debts.id,
-      name: debts.name,
-      creditor: debts.creditor,
-      originalAmountMinor: debts.originalAmountMinor,
-      interestRateBps: debts.interestRateBps,
-      minimumPaymentMinor: debts.minimumPaymentMinor,
-      dueDay: debts.dueDay,
-      currency: debts.currency,
-      status: debts.status,
-      notes: debts.notes,
-      // strategyOrder: debts.strategyOrder,
-      createdAt: debts.createdAt,
-      updatedAt: debts.updatedAt,
-      // Compute current balance from ledger in the same query
-      currentBalanceMinor: sql<number>`
-        COALESCE((
-          SELECT SUM(${ledgerEntries.amountMinor})
-          FROM ${ledgerEntries}
-          WHERE ${ledgerEntries.debtId} = ${debts.id}
-          AND ${ledgerEntries.userId} = ${userId}
-        ), 0)
-      `.mapWith(Number),
+      debtId: ledgerEntries.debtId,
+      balanceMinor: sum(ledgerEntries.amountMinor),
     })
+    .from(ledgerEntries)
+    .where(eq(ledgerEntries.userId, userId))
+    .groupBy(ledgerEntries.debtId);
+
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    // sum() returns string | null in Drizzle (PostgreSQL SUM can be null)
+    map.set(
+      row.debtId,
+      row.balanceMinor !== null ? Number(row.balanceMinor) : 0,
+    );
+  }
+  return map;
+}
+
+// ─── Read queries ─────────────────────────────────────────────────────────────
+
+/**
+ * Get all active debts for a user with their current balances.
+ */
+export async function getActiveDebtsByUserId(userId: string, tx?: TxClient) {
+  const client = tx ?? db;
+
+  // Step 1: fetch debt metadata
+  const debtRows = await client
+    .select()
     .from(debts)
     .where(and(eq(debts.userId, userId), eq(debts.status, "active")))
     .orderBy(desc(debts.createdAt));
 
-  return rows;
+  if (debtRows.length === 0) return [];
+
+  // Step 2: fetch balances for all debts in one query
+  const balanceMap = await fetchBalanceMap(userId, tx);
+
+  // Step 3: merge in JavaScript — no SQL trickery needed
+  return debtRows.map((debt) => ({
+    ...debt,
+    originalAmountMinor: Number(debt.originalAmountMinor),
+    minimumPaymentMinor: Number(debt.minimumPaymentMinor),
+    currentBalanceMinor: Math.max(0, balanceMap.get(debt.id) ?? 0),
+  }));
 }
 
 /**
- * Get a single debt by ID, verifying ownership.
- * Returns null if not found or not owned by userId.
+ * Get a single debt by ID with its current balance.
+ * Returns null if not found or not owned by the user.
  */
 export async function getDebtById(
   debtId: string,
@@ -85,35 +117,37 @@ export async function getDebtById(
 ) {
   const client = tx ?? db;
 
+  // Step 1: fetch the debt
   const rows = await client
-    .select({
-      id: debts.id,
-      name: debts.name,
-      creditor: debts.creditor,
-      originalAmountMinor: debts.originalAmountMinor,
-      interestRateBps: debts.interestRateBps,
-      minimumPaymentMinor: debts.minimumPaymentMinor,
-      dueDay: debts.dueDay,
-      currency: debts.currency,
-      status: debts.status,
-      notes: debts.notes,
-      // strategyOrder: debts.strategyOrder,
-      createdAt: debts.createdAt,
-      updatedAt: debts.updatedAt,
-      currentBalanceMinor: sql<number>`
-        COALESCE((
-          SELECT SUM(${ledgerEntries.amountMinor})
-          FROM ${ledgerEntries}
-          WHERE ${ledgerEntries.debtId} = ${debts.id}
-          AND ${ledgerEntries.userId} = ${userId}
-        ), 0)
-      `.mapWith(Number),
-    })
+    .select()
     .from(debts)
     .where(and(eq(debts.id, debtId), eq(debts.userId, userId)))
     .limit(1);
 
-  return rows[0] ?? null;
+  const debt = rows[0];
+  if (!debt) return null;
+
+  // Step 2: fetch the balance with a simple GROUP BY query
+  const balanceRows = await client
+    .select({ balanceMinor: sum(ledgerEntries.amountMinor) })
+    .from(ledgerEntries)
+    .where(
+      and(eq(ledgerEntries.debtId, debtId), eq(ledgerEntries.userId, userId)),
+    )
+    .groupBy(ledgerEntries.debtId);
+
+  const rawBalance = balanceRows[0]?.balanceMinor ?? null;
+  const currentBalanceMinor = Math.max(
+    0,
+    rawBalance !== null ? Number(rawBalance) : 0,
+  );
+
+  return {
+    ...debt,
+    originalAmountMinor: Number(debt.originalAmountMinor),
+    minimumPaymentMinor: Number(debt.minimumPaymentMinor),
+    currentBalanceMinor,
+  };
 }
 
 /**
@@ -136,7 +170,6 @@ export async function countActiveDebtsByUserId(
 
 /**
  * Get all ledger entries for a debt, ordered by effective date descending.
- * Used for the payment history view.
  */
 export async function getLedgerEntriesByDebtId(
   debtId: string,
@@ -145,22 +178,23 @@ export async function getLedgerEntriesByDebtId(
 ) {
   const client = tx ?? db;
 
-  return client
+  const rows = await client
     .select()
     .from(ledgerEntries)
     .where(
       and(eq(ledgerEntries.debtId, debtId), eq(ledgerEntries.userId, userId)),
     )
     .orderBy(desc(ledgerEntries.effectiveDate));
+
+  // Ensure amountMinor is always a JS number
+  return rows.map((r) => ({
+    ...r,
+    amountMinor: Number(r.amountMinor),
+  }));
 }
 
-// ─── Write queries ─────────────────────────────────────────────────────────────
+// ─── Write queries ────────────────────────────────────────────────────────────
 
-/**
- * Insert a new debt row.
- * Does NOT create the opening ledger entry — that's the service's job
- * so it can be done atomically inside a transaction.
- */
 export async function insertDebt(
   values: {
     id: string;
@@ -177,16 +211,10 @@ export async function insertDebt(
   tx?: TxClient,
 ) {
   const client = tx ?? db;
-
   const result = await client.insert(debts).values(values).returning();
-
   return result[0] ?? null;
 }
 
-/**
- * Insert a ledger entry.
- * Used for: opening entries, payments, adjustments.
- */
 export async function insertLedgerEntry(
   values: {
     id: string;
@@ -201,16 +229,10 @@ export async function insertLedgerEntry(
   tx?: TxClient,
 ) {
   const client = tx ?? db;
-
   const result = await client.insert(ledgerEntries).values(values).returning();
-
   return result[0] ?? null;
 }
 
-/**
- * Update mutable debt fields.
- * Original amount is explicitly excluded — it is immutable after creation.
- */
 export async function updateDebt(
   debtId: string,
   userId: string,
@@ -229,20 +251,13 @@ export async function updateDebt(
 
   const result = await client
     .update(debts)
-    .set({
-      ...values,
-      updatedAt: new Date(),
-    })
+    .set({ ...values, updatedAt: new Date() })
     .where(and(eq(debts.id, debtId), eq(debts.userId, userId)))
     .returning();
 
   return result[0] ?? null;
 }
 
-/**
- * Set a debt's status to 'archived'.
- * Never deletes — ledger entries are preserved.
- */
 export async function archiveDebt(
   debtId: string,
   userId: string,
@@ -252,10 +267,7 @@ export async function archiveDebt(
 
   const result = await client
     .update(debts)
-    .set({
-      status: "archived",
-      updatedAt: new Date(),
-    })
+    .set({ status: "archived", updatedAt: new Date() })
     .where(and(eq(debts.id, debtId), eq(debts.userId, userId)))
     .returning();
 

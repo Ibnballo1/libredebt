@@ -47,18 +47,9 @@ export type DebtCardData = {
   minimumPaymentMinor: number;
   dueDay: number | null;
   currency: string;
-  status: "active" | "archived" | "settled" | "paused";
+  status: "active" | "archived" | "paused" | "settled";
 };
 
-/**
- * Returns the accent color for the left border based on debt health.
- * In Stage 1, we use a simple heuristic based on progress:
- *   > 75% repaid → emerald (excellent)
- *   > 25% repaid → amber (in progress)
- *   ≤ 25% repaid → red (just started / high balance)
- *
- * Stage 2 will add due-date awareness for overdue coloring.
- */
 function getDebtColor(progressPct: number): string {
   if (progressPct >= 75) return "#10B981";
   if (progressPct >= 25) return "#F59E0B";
@@ -100,7 +91,7 @@ export function DebtCard({ debt }: { debt: DebtCardData }) {
         <div className="p-5">
           {/* Top row: name + actions */}
           <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 relative z-10">
               <Link
                 href={`/debts/${debt.id}`}
                 className="block text-sm font-semibold text-[#0F172A] hover:text-[#10B981] transition-colors truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]/50 rounded"
@@ -110,45 +101,47 @@ export function DebtCard({ debt }: { debt: DebtCardData }) {
               <p className="text-xs text-[#64748B] mt-0.5">{debt.creditor}</p>
             </div>
 
-            {/* Action menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#0F172A] transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                  aria-label={`Actions for ${debt.name}`}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/debts/${debt.id}`}
-                    className="flex items-center gap-2 cursor-pointer"
+            {/* Action menu — Added relative z-10 context stack layer to bypass full-card clickable overlays */}
+            <div className="relative z-10">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#0F172A] transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label={`Actions for ${debt.name}`}
                   >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    View details
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/debts/${debt.id}/edit`}
-                    className="flex items-center gap-2 cursor-pointer"
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/debts/${debt.id}`}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      View details
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/debts/${debt.id}/edit`}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit debt
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 text-[#94A3B8] hover:text-[#0F172A] cursor-pointer"
+                    onClick={() => setShowArchiveDialog(true)}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit debt
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="flex items-center gap-2 text-[#94A3B8] hover:text-[#0F172A] cursor-pointer"
-                  onClick={() => setShowArchiveDialog(true)}
-                >
-                  <Archive className="h-3.5 w-3.5" />
-                  Archive
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <Archive className="h-3.5 w-3.5" />
+                    Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Balance row */}
@@ -200,7 +193,7 @@ export function DebtCard({ debt }: { debt: DebtCardData }) {
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${progressPct}%`, background: accentColor }}
-              />
+              ></div>
             </div>
           </div>
 

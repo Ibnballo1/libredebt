@@ -1,3 +1,5 @@
+// db/schema/debts.ts
+
 import {
   pgTable,
   text,

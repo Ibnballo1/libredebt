@@ -71,9 +71,11 @@ export default async function EditDebtPage({ params }: EditDebtPageProps) {
                 originalAmountMinor: debt.originalAmountMinor,
                 interestRateBps: debt.interestRateBps,
                 minimumPaymentMinor: debt.minimumPaymentMinor,
-                dueDay: debt.dueDay,
+                // ✨ FIXED: Preserve numeric type for dueDay (use null when missing)
+                dueDay: debt.dueDay ?? null,
                 currency: debt.currency,
-                notes: debt.notes,
+                // ✨ FIXED: Prevent React uncontrolled input warnings by replacing null values with standard empty strings
+                notes: debt.notes ?? "",
               }}
             />
           </div>

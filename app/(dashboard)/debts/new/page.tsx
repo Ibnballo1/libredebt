@@ -2,10 +2,6 @@
  * app/(dashboard)/debts/new/page.tsx — Create Debt Page
  *
  * Server Component wrapper. The form itself is a Client Component.
- *
- * Pre-flight check: if the user is already at the free plan limit,
- * show a gate screen instead of the form — no point rendering a form
- * the Server Action will reject anyway.
  */
 
 import type { Metadata } from "next";
@@ -29,7 +25,7 @@ export default async function NewDebtPage() {
   if (tier === "free") {
     const activeCount = await countActiveDebtsByUserId(user.id);
     if (activeCount >= FREE_PLAN_DEBT_LIMIT) {
-      return <DebtLimitGate currentCount={activeCount} />;
+      return <DebtLimitGate currentCount={activeCount} tier={tier} />;
     }
   }
 
@@ -83,12 +79,19 @@ export default async function NewDebtPage() {
 
 /* ── Debt limit gate screen ────────────────────────────────────────────────── */
 
-function DebtLimitGate({ currentCount }: { currentCount: number }) {
+interface DebtLimitGateProps {
+  currentCount: number;
+  tier: "free" | "pro";
+}
+
+function DebtLimitGate({ currentCount, tier }: DebtLimitGateProps) {
   return (
     <div className="flex flex-col flex-1">
+      {/* ✨ FIXED: Included tier context prop to match required Navbar specs */}
       <Navbar
         title="Add Debt"
         breadcrumb={[{ label: "Debts", href: "/debts" }, { label: "New" }]}
+        tier={tier}
       />
       <div className="flex-1 p-6 flex items-start justify-center">
         <div className="max-w-md w-full mt-8">

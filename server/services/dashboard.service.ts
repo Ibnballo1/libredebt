@@ -1,31 +1,26 @@
 /**
- * server/services/dashboard.service.ts
+ * server/services/dashboard.service.ts — DEFINITIVE FIX
  *
- * All dashboard statistics are computed directly from the ledger.
- * No cached balance columns — every number here is always accurate.
+ * Same root cause as debt.repository.ts: correlated subqueries using
+ * Drizzle's sql`` template interpolate column references as bound
+ * parameters, causing them to match nothing and return 0.
+ *
+ * This version uses a single GROUP BY query to get all balances,
+ * then merges with debt data in JavaScript.
  */
 
 import { db } from "@/db";
 import { debts, ledgerEntries } from "@/db/schema";
-import { eq, and, count, sql, desc } from "drizzle-orm";
+import { eq, and, sum, count, desc } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type DashboardStats = {
-  /** Number of active debts */
   activeDebtCount: number;
-  /** Grouped calculations mapped precisely by individual asset ticker handles */
-  currencyTotals: Record<
-    string,
-    {
-      totalOriginalMinor: number;
-      totalCurrentMinor: number;
-      totalRepaidMinor: number;
-    }
-  >;
-  /** Per-debt breakdown for the progress list */
+  totalOriginalMinor: number;
+  totalCurrentMinor: number;
+  totalRepaidMinor: number;
   debtBreakdown: DebtBreakdownItem[];
-  /** Most recent payment entries across all debts */
   recentPayments: RecentPayment[];
 };
 
@@ -50,30 +45,12 @@ export type RecentPayment = {
   effectiveDate: Date;
 };
 
-// ─── Main aggregation function ────────────────────────────────────────────────
+// ─── Main aggregation ─────────────────────────────────────────────────────────
 
 export async function getDashboardStats(
   userId: string,
 ): Promise<DashboardStats> {
-  // ── Query 1: Active debt counts ──────────────────────────────────────────
-  const debtCountRes = await db
-    .select({ count: count() })
-    .from(debts)
-    .where(and(eq(debts.userId, userId), eq(debts.status, "active")));
-
-  const activeDebtCount = debtCountRes[0]?.count ?? 0;
-
-  // Short-circuit: no debts → return zeroes
-  if (activeDebtCount === 0) {
-    return {
-      activeDebtCount: 0,
-      currencyTotals: {},
-      debtBreakdown: [],
-      recentPayments: [],
-    };
-  }
-
-  // ── Query 2: Per-debt current balances ────────────────────────────────────
+  // ── Query 1: All active debts ─────────────────────────────────────────────
   const debtRows = await db
     .select({
       id: debts.id,
@@ -82,78 +59,96 @@ export async function getDashboardStats(
       currency: debts.currency,
       originalAmountMinor: debts.originalAmountMinor,
       dueDay: debts.dueDay,
-      currentBalanceMinor: sql<number>`
-        COALESCE((
-          SELECT SUM(${ledgerEntries.amountMinor})
-          FROM ${ledgerEntries}
-          WHERE ${ledgerEntries.debtId} = ${debts.id}
-            AND ${ledgerEntries.userId} = ${userId}
-        ), 0)
-      `.mapWith(Number),
     })
     .from(debts)
     .where(and(eq(debts.userId, userId), eq(debts.status, "active")))
     .orderBy(desc(debts.createdAt));
 
-  // ── Aggregations grouped securely by unique asset currencies ──
-  const currencyTotals: DashboardStats["currencyTotals"] = {};
+  const activeDebtCount = debtRows.length;
 
-  for (const row of debtRows) {
-    const cc = row.currency;
-    const current = Math.max(0, row.currentBalanceMinor);
-    const original = row.originalAmountMinor;
-
-    if (!currencyTotals[cc]) {
-      currencyTotals[cc] = {
-        totalOriginalMinor: 0,
-        totalCurrentMinor: 0,
-        totalRepaidMinor: 0,
-      };
-    }
-
-    currencyTotals[cc].totalOriginalMinor += original;
-    currencyTotals[cc].totalCurrentMinor += current;
+  if (activeDebtCount === 0) {
+    return {
+      activeDebtCount: 0,
+      totalOriginalMinor: 0,
+      totalCurrentMinor: 0,
+      totalRepaidMinor: 0,
+      debtBreakdown: [],
+      recentPayments: [],
+    };
   }
 
-  // ✨ FIXED: Amount Repaid = Original Debt - Current Balance Outstanding
-  for (const cc in currencyTotals) {
-    const original = currencyTotals[cc]?.totalOriginalMinor ?? 0;
-    const current = currencyTotals[cc]?.totalCurrentMinor ?? 0;
+  // ── Query 2: All ledger balances grouped by debt ───────────────────────────
+  //
+  // This is a simple GROUP BY query — Drizzle handles it correctly.
+  // No correlated subqueries, no sql`` template column-reference issues.
+  //
+  // Returns one row per debt: { debtId, balanceMinor }
+  // balanceMinor = SUM of all ledger entries for that debt
+  //   (opening: positive, payments: negative, net = current balance)
+  const ledgerRows = await db
+    .select({
+      debtId: ledgerEntries.debtId,
+      balanceMinor: sum(ledgerEntries.amountMinor),
+    })
+    .from(ledgerEntries)
+    .where(eq(ledgerEntries.userId, userId))
+    .groupBy(ledgerEntries.debtId);
 
-    currencyTotals[cc]!.totalRepaidMinor = Math.max(0, original - current);
+  // Build lookup map: debtId → balanceMinor
+  const balanceMap = new Map<string, number>();
+  for (const row of ledgerRows) {
+    balanceMap.set(
+      row.debtId,
+      row.balanceMinor !== null ? Number(row.balanceMinor) : 0,
+    );
   }
 
-  // ── Build per-debt breakdown ──────────────────────────────────────────────
-  const debtBreakdown: DebtBreakdownItem[] = debtRows.map((d) => {
-    const current = Math.max(0, d.currentBalanceMinor);
+  // ── Compute totals and per-debt breakdown in JS ───────────────────────────
+  let totalOriginalMinor = 0;
+  let totalCurrentMinor = 0;
 
-    // ✨ FIXED: Repaid Delta value used to measure complete breakdown progress percentages accurately
-    const repaidAmount = Math.max(0, d.originalAmountMinor - current);
+  const debtBreakdown: DebtBreakdownItem[] = debtRows.map((debt) => {
+    const originalAmountMinor = Number(debt.originalAmountMinor);
 
-    const pct =
-      d.originalAmountMinor > 0
+    // currentBalance = SUM of all ledger entries
+    // For a brand new debt: only the opening entry exists (+original)
+    // so currentBalance = original → progress = 0%  ✅
+    const rawBalance = balanceMap.get(debt.id) ?? 0;
+    const currentBalanceMinor = Math.max(0, rawBalance);
+
+    totalOriginalMinor += originalAmountMinor;
+    totalCurrentMinor += currentBalanceMinor;
+
+    const progressPercent =
+      originalAmountMinor > 0
         ? Math.min(
             100,
             Math.max(
               0,
-              Math.round((repaidAmount / d.originalAmountMinor) * 1000) / 10,
+              Math.round(
+                ((originalAmountMinor - currentBalanceMinor) /
+                  originalAmountMinor) *
+                  1000,
+              ) / 10,
             ),
           )
         : 0;
 
     return {
-      id: d.id,
-      name: d.name,
-      creditor: d.creditor,
-      currency: d.currency,
-      originalAmountMinor: d.originalAmountMinor,
-      currentBalanceMinor: current,
-      progressPercent: pct,
-      dueDay: d.dueDay,
+      id: debt.id,
+      name: debt.name,
+      creditor: debt.creditor,
+      currency: debt.currency,
+      originalAmountMinor,
+      currentBalanceMinor,
+      progressPercent,
+      dueDay: debt.dueDay,
     };
   });
 
-  // ── Query 3: Recent payment entries (last 5) ──────────────────────────────
+  const totalRepaidMinor = Math.max(0, totalOriginalMinor - totalCurrentMinor);
+
+  // ── Query 3: Recent payments ───────────────────────────────────────────────
   const recentEntries = await db
     .select({
       id: ledgerEntries.id,
@@ -176,7 +171,7 @@ export async function getDashboardStats(
     id: e.id,
     debtId: e.debtId,
     debtName: e.debtName,
-    amountMinor: e.amountMinor,
+    amountMinor: Number(e.amountMinor),
     currency: e.currency,
     note: e.note,
     effectiveDate: e.effectiveDate,
@@ -184,13 +179,15 @@ export async function getDashboardStats(
 
   return {
     activeDebtCount,
-    currencyTotals,
+    totalOriginalMinor,
+    totalCurrentMinor,
+    totalRepaidMinor,
     debtBreakdown,
     recentPayments,
   };
 }
 
-// ─── Payments history (full list for /payments page) ─────────────────────────
+// ─── Payment history ──────────────────────────────────────────────────────────
 
 export type PaymentHistoryEntry = {
   id: string;
@@ -204,10 +201,6 @@ export type PaymentHistoryEntry = {
   type: "payment" | "opening" | "adjustment";
 };
 
-/**
- * Fetches the complete payment history for a user across all debts.
- * Used on the /payments page.
- */
 export async function getPaymentHistory(
   userId: string,
   limit = 50,
@@ -226,9 +219,22 @@ export async function getPaymentHistory(
     })
     .from(ledgerEntries)
     .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
-    .where(eq(ledgerEntries.userId, userId))
+    .where(
+      and(eq(ledgerEntries.userId, userId), eq(ledgerEntries.type, "payment")),
+    )
     .orderBy(desc(ledgerEntries.effectiveDate))
     .limit(limit);
 
-  return rows as PaymentHistoryEntry[];
+  return rows.map((r) => ({
+    id: r.id,
+    debtId: r.debtId,
+    debtName: r.debtName,
+    creditor: r.creditor,
+    currency: r.currency,
+    amountMinor: Number(r.amountMinor),
+    note: r.note,
+    effectiveDate: r.effectiveDate,
+    // query filters to payments only, so narrow the type here
+    type: "payment",
+  }));
 }

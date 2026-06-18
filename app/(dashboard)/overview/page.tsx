@@ -1,8 +1,18 @@
 /**
  * app/(dashboard)/overview/page.tsx — Main Dashboard
  *
- * Fully wired to real multi-currency ledger data via getDashboardStats().
+ * REPLACES the stub from Step 4.
+ *
+ * Fully wired to real ledger data via getDashboardStats().
  * Server Component — no client-side fetching for the initial render.
+ *
+ * SECTIONS:
+ *   1. Debt limit banner (free users at/near limit)
+ *   2. Four stat cards (total, repaid, remaining, progress %)
+ *   3. Overall progress bar
+ *   4. Debt breakdown list (each debt's progress)
+ *   5. Recent activity feed (last 5 payments)
+ *   6. Empty state (no debts yet)
  */
 
 import type { Metadata } from "next";
@@ -25,20 +35,13 @@ export default async function OverviewPage() {
   const currency = user.currency ?? "NGN";
 
   const stats = await getDashboardStats(user.id);
-  const hasDebts = stats.activeDebtCount > 0;
-
-  // ✨ FIXED: Pulling data out of the multi-currency map safely with flat fallbacks
-  const currentCurrencyTotals = stats.currencyTotals[currency] ?? {
-    totalOriginalMinor: 0,
-    totalCurrentMinor: 0,
-    totalRepaidMinor: 0,
-  };
 
   const overallProgress = calculateProgressPercent(
-    currentCurrencyTotals.totalOriginalMinor,
-    currentCurrencyTotals.totalCurrentMinor,
+    stats.totalOriginalMinor,
+    stats.totalCurrentMinor,
   );
 
+  const hasDebts = stats.activeDebtCount > 0;
   const firstName = user.name.split(" ")[0] ?? user.name;
 
   return (
@@ -76,42 +79,33 @@ export default async function OverviewPage() {
               {/* ── Stat cards ── */}
               <div>
                 <p className="text-[10px] font-bold tracking-widest uppercase text-[#94A3B8] mb-3">
-                  Your debt summary ({currency})
+                  Your debt summary
                 </p>
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <StatCard
                     label="Total Debt"
-                    value={formatCurrency(
-                      currentCurrencyTotals.totalOriginalMinor,
-                      {
-                        currency,
-                        compact: true,
-                      },
-                    )}
+                    value={formatCurrency(stats.totalOriginalMinor, {
+                      currency,
+                      compact: true,
+                    })}
                     subtext={`${stats.activeDebtCount} ${stats.activeDebtCount === 1 ? "debt" : "debts"}`}
                     variant="info"
                   />
                   <StatCard
                     label="Amount Repaid"
-                    value={formatCurrency(
-                      currentCurrencyTotals.totalRepaidMinor,
-                      {
-                        currency,
-                        compact: true,
-                      },
-                    )}
+                    value={formatCurrency(stats.totalRepaidMinor, {
+                      currency,
+                      compact: true,
+                    })}
                     subtext="total paid so far"
                     variant="default"
                   />
                   <StatCard
                     label="Remaining"
-                    value={formatCurrency(
-                      currentCurrencyTotals.totalCurrentMinor,
-                      {
-                        currency,
-                        compact: true,
-                      },
-                    )}
+                    value={formatCurrency(stats.totalCurrentMinor, {
+                      currency,
+                      compact: true,
+                    })}
                     subtext="still outstanding"
                     variant="warning"
                   />
@@ -149,14 +143,14 @@ export default async function OverviewPage() {
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[10px] text-[#94A3B8] tabular-nums">
-                    {formatCurrency(currentCurrencyTotals.totalRepaidMinor, {
+                    {formatCurrency(stats.totalRepaidMinor, {
                       currency,
                       compact: true,
                     })}{" "}
                     repaid
                   </span>
                   <span className="text-[10px] text-[#94A3B8] tabular-nums">
-                    {formatCurrency(currentCurrencyTotals.totalOriginalMinor, {
+                    {formatCurrency(stats.totalOriginalMinor, {
                       currency,
                       compact: true,
                     })}{" "}
@@ -173,7 +167,7 @@ export default async function OverviewPage() {
                 />
                 <RecentActivityFeed
                   payments={stats.recentPayments}
-                  currency={currency}
+                  // currency={currency}
                 />
               </div>
             </>

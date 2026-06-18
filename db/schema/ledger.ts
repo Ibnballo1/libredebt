@@ -1,3 +1,5 @@
+// db/schema/ledger.ts
+
 import {
   pgTable,
   text,
