@@ -64,6 +64,12 @@ export const debts = pgTable(
     notes: text("notes"),
 
     /**
+     * Strategy ordering for the debt snowball/avalanche algorithm.
+     * Null means the debt is not part of the current strategy.
+     */
+    strategyOrder: integer("strategy_order"),
+
+    /**
      * Milestone timestamps for data visibility metrics.
      */
     settledAt: timestamp("settled_at", { withTimezone: true }),
@@ -95,6 +101,7 @@ export const debts = pgTable(
       sql`${table.minimumPaymentMinor} >= 0`,
     ),
     check("due_day_valid", sql`${table.dueDay} >= 1 AND ${table.dueDay} <= 31`),
+    check("strategy_order_positive", sql`${table.strategyOrder} > 0`),
   ],
 );
 
