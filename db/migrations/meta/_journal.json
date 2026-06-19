@@ -8,6 +8,13 @@
       "when": 1781383229935,
       "tag": "0000_dusty_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781853630905,
+      "tag": "0001_fuzzy_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

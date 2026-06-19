@@ -29,6 +29,10 @@ import {
   recordPayment,
 } from "@/server/services/debt.service";
 import {
+  scheduleRemindersForDebt,
+  cancelPendingRemindersForDebt,
+} from "@/server/services/reminder.service";
+import {
   createDebtSchema,
   editDebtSchema,
   archiveDebtSchema,
@@ -74,6 +78,16 @@ export const createDebtAction = authAction
       return { success: false as const, error: result.error };
     }
 
+    // Pro users with a due day set get reminders scheduled automatically.
+    // Free users never get reminders — this is a Pro-gated feature.
+    if (subscriptionTier === "pro" && parsedInput.dueDay) {
+      await scheduleRemindersForDebt(
+        result.debtId,
+        userId,
+        parseInt(parsedInput.dueDay, 10),
+      );
+    }
+
     revalidatePath("/debts");
     revalidatePath("/overview");
 
@@ -90,12 +104,28 @@ const editDebtActionSchema = editDebtSchema.extend({
 export const editDebtAction = authAction
   .inputSchema(editDebtActionSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const { userId } = ctx;
+    const { userId, subscriptionTier } = ctx;
     const { debtId, ...editInput } = parsedInput;
 
     const result = await editDebt(userId, debtId, editInput);
     if (!result.success) {
       return { success: false as const, error: result.error };
+    }
+
+    // Re-schedule reminders if the due day changed (Pro only).
+    // scheduleRemindersForDebt cancels old pending reminders first,
+    // so this is safe to call even if dueDay is unchanged.
+    if (subscriptionTier === "pro") {
+      if (editInput.dueDay) {
+        await scheduleRemindersForDebt(
+          debtId,
+          userId,
+          parseInt(editInput.dueDay, 10),
+        );
+      } else {
+        // Due day was cleared — cancel any pending reminders
+        await cancelPendingRemindersForDebt(debtId, userId);
+      }
     }
 
     revalidatePath("/debts");
@@ -116,6 +146,9 @@ export const archiveDebtAction = authAction
     if (!result.success) {
       return { success: false as const, error: result.error };
     }
+
+    // Cancel any pending reminders — an archived debt shouldn't nag the user
+    await cancelPendingRemindersForDebt(parsedInput.debtId, userId);
 
     revalidatePath("/debts");
     revalidatePath("/overview");

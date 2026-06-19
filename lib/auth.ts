@@ -173,6 +173,24 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      reminderDueSoonEnabled: {
+        type: "boolean",
+        defaultValue: true,
+        required: false,
+        input: true, // user can change this from settings
+      },
+      reminderOverdueEnabled: {
+        type: "boolean",
+        defaultValue: true,
+        required: false,
+        input: true,
+      },
+      reminderWeeklySummaryEnabled: {
+        type: "boolean",
+        defaultValue: true,
+        required: false,
+        input: true,
+      },
     },
   },
 
