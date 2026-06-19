@@ -31,6 +31,15 @@ export const users = pgTable("users", {
   subscriptionTier: text("subscription_tier").default("free"),
   currency: text("currency").default("NGN"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  reminderDueSoonEnabled: boolean("reminder_due_soon_enabled")
+    .notNull()
+    .default(true),
+  reminderOverdueEnabled: boolean("reminder_overdue_enabled")
+    .notNull()
+    .default(true),
+  reminderWeeklySummaryEnabled: boolean("reminder_weekly_summary_enabled")
+    .notNull()
+    .default(true),
 });
 
 export const sessions = pgTable(
