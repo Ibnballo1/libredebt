@@ -86,6 +86,22 @@ export const primaryNav: NavSection[] = [
         stage: 2,
         disabled: 2 > CURRENT_RELEASE_STAGE,
       },
+      {
+        label: "Simulations",
+        href: "/simulations",
+        icon: TrendingDown,
+        badge: "pro",
+        stage: 4,
+        disabled: 4 > CURRENT_RELEASE_STAGE,
+      },
+      {
+        label: "Analytics",
+        href: "/analytics",
+        icon: LayoutDashboard,
+        badge: "pro",
+        stage: 5,
+        disabled: 5 > CURRENT_RELEASE_STAGE,
+      },
     ],
   },
 ];
