@@ -1,80 +1,59 @@
 /**
- * components/help/help-accordion.tsx — Help Accordion Layout
+ * components/help/help-accordion.tsx
  *
- * Client Component utilizing state mapping loops to build out fully
- * fluid disclosure transitions without heavy structural dependencies.
+ * Same accordion pattern as the marketing FAQ section (Step on the
+ * landing page) — reused here for in-app help, with local useState
+ * per item rather than the native <details> approach since this list
+ * is shorter and benefits from the chevron-rotate animation.
  */
 
 "use client";
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface FAQItem {
-  readonly question: string;
-  readonly answer: string;
-}
+type Faq = { question: string; answer: string };
 
-interface HelpAccordionProps {
-  faqs: readonly FAQItem[];
-}
-
-export function HelpAccordion({ faqs }: HelpAccordionProps) {
-  // Store expanded state using primitive integer index references
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  function toggleAccordion(index: number) {
-    setOpenIndex(openIndex === index ? null : index);
-  }
+function HelpAccordionItem({ question, answer }: Faq) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="w-full divide-y divide-[#F1F5F9] pb-4">
-      {faqs.map((faq, index) => {
-        const isOpen = openIndex === index;
+    <div className="border-b border-[#F1F5F9] last:border-none">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between py-4 text-left focus-visible:outline-none"
+        aria-expanded={open}
+      >
+        <span className="text-sm font-semibold text-[#0F172A] pr-6">
+          {question}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 flex-shrink-0 text-[#94A3B8] transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          open ? "max-h-96 pb-4" : "max-h-0",
+        )}
+      >
+        <p className="text-sm leading-relaxed text-[#64748B]">{answer}</p>
+      </div>
+    </div>
+  );
+}
 
-        return (
-          <div key={index} className="py-4 first:pt-2 last:pb-2">
-            <h3>
-              <button
-                type="button"
-                onClick={() => toggleAccordion(index)}
-                aria-expanded={isOpen}
-                aria-controls={`faq-content-${index}`}
-                id={`faq-button-${index}`}
-                className="flex w-full items-start justify-between text-left gap-4 group focus:outline-none"
-              >
-                <span className="text-sm font-semibold text-[#0F172A] group-hover:text-[#10B981] transition-colors leading-snug">
-                  {faq.question}
-                </span>
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-[#F8FAFC] border border-[#E2E8F0] group-hover:border-[#CBD5E1] transition-colors mt-0.5">
-                  <ChevronDown
-                    className={`h-3 w-3 text-[#64748B] transition-transform duration-300 ease-out ${
-                      isOpen ? "rotate-180 text-[#10B981]" : ""
-                    }`}
-                  />
-                </span>
-              </button>
-            </h3>
-
-            <div
-              id={`faq-content-${index}`}
-              aria-labelledby={`faq-button-${index}`}
-              role="region"
-              className={`grid transition-all duration-300 ease-in-out text-[#64748B] text-xs leading-relaxed ${
-                isOpen
-                  ? "grid-rows-[1fr] opacity-100 mt-2.5"
-                  : "grid-rows-[0fr] opacity-0 pointer-events-none"
-              }`}
-            >
-              <div className="overflow-hidden">
-                <p className="bg-[#F8FAFC] p-3.5 rounded-lg border border-[#F1F5F9] whitespace-pre-line shadow-inner-sm">
-                  {faq.answer}
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+export function HelpAccordion({ faqs }: { faqs: readonly Faq[] }) {
+  return (
+    <div>
+      {faqs.map((faq) => (
+        <HelpAccordionItem key={faq.question} {...faq} />
+      ))}
     </div>
   );
 }
