@@ -54,7 +54,7 @@ export const env = createEnv({
     PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
 
     // ─── Stage 5: Stripe (optional until Stage 5) ────────────────────
-    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    // STRIPE_SECRET_KEY: z.string().min(1).optional(),
 
     // ─── Runtime ──────────────────────────────────────────────────────
     NODE_ENV: z
@@ -95,7 +95,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    // STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
