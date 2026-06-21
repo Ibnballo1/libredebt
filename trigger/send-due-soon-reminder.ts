@@ -81,7 +81,8 @@ export const sendDueSoonReminders = schedules.task({
 
         const result = await resend.emails.send({
           from: FROM_EMAIL,
-          to: reminder.userEmail,
+          // to: reminder.userEmail,
+          to: "webtekhy@gmail.com",
           subject: `Payment reminder: ${reminder.debtName} is due ${
             daysUntilDue === 1 ? "tomorrow" : `in ${daysUntilDue} days`
           }`,

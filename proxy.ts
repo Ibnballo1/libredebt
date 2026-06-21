@@ -55,9 +55,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // CASE B: Authenticated user attempting to access login/register -> Instant Redirect
+  // CASE B: Authenticated user attempting to access login/register
   if (isAuthenticated && isAuthRoute) {
-    return NextResponse.redirect(new URL("/overview", request.url));
+    // ONLY redirect to overview if they aren't explicitly being thrown back here via a clearance sign
+    const hasCallback = request.nextUrl.searchParams.has("callbackUrl");
+
+    if (!hasCallback) {
+      return NextResponse.redirect(new URL("/overview", request.url));
+    }
+
+    // If a callbackUrl is present, it means a server-side route explicitly rejected their session.
+    // Allow the request to pass through to /login so they can re-authenticate.
+    return NextResponse.next();
   }
 
   return NextResponse.next();

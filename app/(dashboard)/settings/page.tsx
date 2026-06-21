@@ -1,7 +1,8 @@
 /**
- * app/(dashboard)/settings/page.tsx — Settings Page
+ * app/(dashboard)/settings/page.tsx — Settings Page (UPDATED)
  *
- * Tab-based settings page. This stage implements the Billing tab fully.
+ * Replaces the Stage 6 stub. The "profile" tab now renders the full
+ * ProfileTab component instead of a placeholder paragraph.
  */
 
 import type { Metadata } from "next";
@@ -10,6 +11,7 @@ import { getActiveSubscription } from "@/server/services/billing.service";
 import { Navbar } from "@/components/layout/navbar";
 import { BillingTab } from "@/components/billing/billing-tab";
 import { SettingsTabs } from "@/components/billing/settings-tabs";
+import { ProfileTab } from "@/components/profile/profile-tab";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -36,6 +38,12 @@ export default async function SettingsPage({
         <SettingsTabs activeTab={tab} />
 
         <div className="mt-6">
+          {tab === "profile" && (
+            <ProfileTab
+              user={{ name: user.name, email: user.email, currency }}
+            />
+          )}
+
           {tab === "billing" && (
             <BillingTab
               tier={tier}
@@ -50,14 +58,6 @@ export default async function SettingsPage({
                   : null
               }
             />
-          )}
-
-          {tab === "profile" && (
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
-              <p className="text-sm text-[#64748B]">
-                Profile settings — name, email, currency preference.
-              </p>
-            </div>
           )}
         </div>
       </div>

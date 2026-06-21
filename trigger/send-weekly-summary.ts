@@ -72,7 +72,8 @@ export const sendWeeklySummary = schedules.task({
 
         const result = await resend.emails.send({
           from: FROM_EMAIL,
-          to: user.email,
+          // to: user.email,
+          to: "webtekhy@gmail.com",
           subject: `Your weekly debt summary — ${overallProgress}% repaid`,
           react: React.createElement(WeeklySummaryEmail, {
             userName: user.name.split(" ")[0] ?? user.name,

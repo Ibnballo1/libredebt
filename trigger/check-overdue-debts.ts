@@ -83,7 +83,8 @@ export const checkOverdueDebts = schedules.task({
 
         const result = await resend.emails.send({
           from: FROM_EMAIL,
-          to: debt.userEmail,
+          // to: debt.userEmail,
+          to: "webtekhy@gmail.com",
           subject: `${debt.name} — no payment recorded yet`,
           react: React.createElement(OverdueEmail, {
             userName: debt.userName.split(" ")[0] ?? debt.userName,
