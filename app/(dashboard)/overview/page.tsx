@@ -26,11 +26,15 @@ import { StatCard, EmptyState, DebtLimitBanner } from "@/components/shared";
 import { DebtProgressList } from "@/components/dashboard/debt-progress-list";
 import { RecentActivityFeed } from "@/components/dashboard/recent-activity-feed";
 import { formatCurrency, calculateProgressPercent } from "@/lib/utils";
+import { redirect } from "next/dist/client/components/navigation";
 
 export const metadata: Metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
   const currency = user.currency ?? "NGN";
 

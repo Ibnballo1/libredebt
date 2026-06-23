@@ -56,17 +56,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // CASE B: Authenticated user attempting to access login/register
+  if (!isAuthenticated && isProtectedRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   if (isAuthenticated && isAuthRoute) {
-    const hasCallback = request.nextUrl.searchParams.has("callbackUrl");
-    const isServerSideRedirect = request.headers.has("x-next-js-redirect");
-
-    // If they are explicitly being sent here by requireUser() failing,
-    // do NOT trap them. Let them see the login page to enter clean credentials.
-    if (hasCallback || isServerSideRedirect) {
-      return NextResponse.next();
-    }
-
-    // Otherwise, if they just manually typed /login while validly authenticated, send to dashboard
     return NextResponse.redirect(new URL("/overview", request.url));
   }
 

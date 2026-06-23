@@ -21,20 +21,15 @@ export async function getSession(): Promise<Session | null> {
  * Returns the current session or throws a redirect to /login.
  * The redirect is a native Next.js router redirect.
  */
-export async function requireSession(): Promise<Session> {
-  const session = await getSession();
-  if (!session) {
-    redirect("/login");
-  }
-  return session;
+export async function requireSession(): Promise<Session | null> {
+  return await getSession();
 }
-
 /**
  * Returns the current user or throws a redirect to /login.
  */
-export async function requireUser(): Promise<User> {
+export async function requireUser(): Promise<User | null> {
   const session = await requireSession();
-  return session.user;
+  return session?.user ?? null;
 }
 
 /**
@@ -43,6 +38,10 @@ export async function requireUser(): Promise<User> {
  */
 export async function requireUserProfile() {
   const user = await requireUser();
+
+  if (!user) {
+    redirect("/login"); // Redirect to login if user is not authenticated
+  }
 
   const profile = await db.query.userProfiles.findFirst({
     where: eq(userProfiles.id, user.id),
