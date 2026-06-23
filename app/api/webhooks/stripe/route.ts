@@ -12,8 +12,8 @@
 //  *   invoice.payment_failed        → mark past_due
 //  */
 
-// import { NextResponse } from "next/server";
-// import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 // import type Stripe from "stripe";
 // import { constructStripeEvent } from "@/lib/stripe";
 // import {
@@ -130,3 +130,8 @@
 //     return NextResponse.json({ received: true, processingError: true });
 //   }
 // }
+
+// nothing for now
+export async function GET() {
+  return NextResponse.json({ message: "Stripe webhook endpoint is live" });
+}
