@@ -22,7 +22,7 @@ export const users = pgTable("users", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-
+  isSuperAdmin: boolean("is_super_admin").notNull().default(false),
   /**
    * NOTE: Custom fields generated via BetterAuth plugins can safely remain
    * here to maintain plugin alignment, but your core feature gating logic
