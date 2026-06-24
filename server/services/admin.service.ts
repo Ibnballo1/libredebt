@@ -26,7 +26,7 @@
 
 import { db } from "@/db";
 import { users, debts, ledgerEntries, subscriptions } from "@/db/schema";
-import { eq, and, count, sum, sql, desc, gte } from "drizzle-orm";
+import { eq, and, count, sum, sql, inArray, desc, gte } from "drizzle-orm";
 
 // ─── System overview ──────────────────────────────────────────────────────────
 
@@ -249,7 +249,10 @@ export async function searchUsers(
     .select({ userId: debts.userId, activeCount: count() })
     .from(debts)
     .where(
-      and(eq(debts.status, "active"), sql`${debts.userId} = ANY(${userIds})`),
+      and(
+        eq(debts.status, "active"),
+        inArray(debts.userId, userIds), // 👈 Replaced raw SQL filter
+      ),
     )
     .groupBy(debts.userId);
 
@@ -267,7 +270,7 @@ export async function searchUsers(
     .where(
       and(
         eq(debts.status, "active"),
-        sql`${ledgerEntries.userId} = ANY(${userIds})`,
+        inArray(ledgerEntries.userId, userIds), // 👈 Replaced raw SQL filter
       ),
     )
     .groupBy(ledgerEntries.userId);

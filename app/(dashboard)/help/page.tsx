@@ -10,6 +10,7 @@ import { Mail, BookOpen, ShieldCheck } from "lucide-react";
 import { requireUser } from "@/lib/auth-session";
 import { Navbar } from "@/components/layout/navbar";
 import { HelpAccordion } from "@/components/help/help-accordion";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Help" };
 
@@ -48,6 +49,9 @@ const FAQS = [
 
 export default async function HelpPage() {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
 
   return (

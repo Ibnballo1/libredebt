@@ -23,6 +23,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { DebtCard } from "@/components/debt/debt-card";
 import { EmptyState, DebtLimitBanner } from "@/components/shared";
 import { FREE_PLAN_DEBT_LIMIT } from "@/server/services/access.service";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Debts",
@@ -30,6 +31,9 @@ export const metadata: Metadata = {
 
 export default async function DebtsPage() {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
   const currency = user.currency ?? "NGN";
 

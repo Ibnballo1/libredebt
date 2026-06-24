@@ -30,7 +30,7 @@
 
 import { db } from "@/db";
 import { reminders, debts, users } from "@/db/schema";
-import { eq, and, lte, desc } from "drizzle-orm";
+import { eq, and, lte, gte, desc } from "drizzle-orm";
 // import { nanoid } from "nanoid"
 import { v4 as uuidv4 } from "uuid";
 
@@ -199,7 +199,7 @@ export async function getPendingDueSoonReminders(): Promise<PendingReminder[]> {
 export async function getUpcomingRemindersForUser(userId: string) {
   const now = new Date();
 
-  const rows = await db
+  return db
     .select({
       id: reminders.id,
       debtId: reminders.debtId,
@@ -209,11 +209,15 @@ export async function getUpcomingRemindersForUser(userId: string) {
     })
     .from(reminders)
     .innerJoin(debts, eq(reminders.debtId, debts.id))
-    .where(and(eq(reminders.userId, userId), eq(reminders.status, "pending")))
+    .where(
+      and(
+        eq(reminders.userId, userId),
+        eq(reminders.status, "pending"),
+        gte(reminders.remindAt, now), // 👈 Strictly database-gated to the future
+      ),
+    )
     .orderBy(reminders.remindAt)
     .limit(10);
-
-  return rows.filter((r) => r.remindAt >= now);
 }
 
 /**

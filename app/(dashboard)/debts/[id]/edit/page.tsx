@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/auth-session";
 import { getDebtById } from "@/server/services/debt.service";
 import { Navbar } from "@/components/layout/navbar";
 import { DebtForm } from "@/components/debt/debt-form";
+import { redirect } from "next/navigation";
 
 type EditDebtPageProps = {
   params: Promise<{ id: string }>;
@@ -21,6 +22,9 @@ export async function generateMetadata({
 }: EditDebtPageProps): Promise<Metadata> {
   const { id } = await params;
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const debt = await getDebtById(id, user.id);
   if (!debt) return { title: "Debt not found" };
   return { title: `Edit — ${debt.name}` };
@@ -29,6 +33,9 @@ export async function generateMetadata({
 export default async function EditDebtPage({ params }: EditDebtPageProps) {
   const { id } = await params;
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
 
   const debt = await getDebtById(id, user.id);

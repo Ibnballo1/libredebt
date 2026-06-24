@@ -26,9 +26,13 @@ import {
   toggleDebtReminderSchema,
   updateReminderPreferencesSchema,
 } from "@/server/validators/reminder.schema";
+import { redirect } from "next/navigation";
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   return next({
     ctx: {
       userId: user.id,
@@ -36,6 +40,8 @@ const authAction = createSafeActionClient().use(async ({ next }) => {
     },
   });
 });
+
+// ─── Toggle reminders for a specific debt ─────────────────────────────────────
 
 // ─── Toggle reminders for a specific debt ─────────────────────────────────────
 
@@ -63,6 +69,9 @@ export const toggleDebtReminderAction = authAction
       return { success: false as const, error: "Debt not found." };
     }
 
+    // Always clean out old states to ensure data cleanliness
+    await cancelPendingRemindersForDebt(debtId, userId);
+
     if (enabled) {
       if (!debt.dueDay) {
         return {
@@ -70,9 +79,8 @@ export const toggleDebtReminderAction = authAction
           error: "Set a due day on this debt before enabling reminders.",
         };
       }
+      // Force schedule future intervals dynamically
       await scheduleRemindersForDebt(debtId, userId, debt.dueDay);
-    } else {
-      await cancelPendingRemindersForDebt(debtId, userId);
     }
 
     revalidatePath("/reminders");

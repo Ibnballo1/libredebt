@@ -28,9 +28,13 @@ import { getActiveSubscription } from "@/server/services/billing.service";
 import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   return next({ ctx: { userId: user.id, userEmail: user.email } });
 });
 

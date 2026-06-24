@@ -38,12 +38,16 @@ import {
   archiveDebtSchema,
   recordPaymentSchema,
 } from "@/server/validators/debt.schema";
+import { redirect } from "next/navigation";
 
 // ─── Authenticated action client ──────────────────────────────────────────────
 // Every action built with this client gets userId + subscriptionTier in ctx.
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   return next({
     ctx: {
       userId: user.id,

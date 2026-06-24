@@ -21,7 +21,7 @@
  * read every time.
  */
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -42,6 +42,10 @@ export type AdminUser = {
  */
 export async function requireSuperAdmin(): Promise<AdminUser> {
   const user = await requireUser();
+
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
 
   const rows = await db
     .select({ isSuperAdmin: users.isSuperAdmin })

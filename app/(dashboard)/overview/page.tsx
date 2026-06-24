@@ -26,7 +26,7 @@ import { StatCard, EmptyState, DebtLimitBanner } from "@/components/shared";
 import { DebtProgressList } from "@/components/dashboard/debt-progress-list";
 import { RecentActivityFeed } from "@/components/dashboard/recent-activity-feed";
 import { formatCurrency, calculateProgressPercent } from "@/lib/utils";
-import { redirect } from "next/dist/client/components/navigation";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Overview" };
 

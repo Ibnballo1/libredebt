@@ -18,6 +18,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { ReminderPreferencesForm } from "@/components/reminders/reminder-preferences-form";
 import { UpcomingRemindersList } from "@/components/reminders/upcoming-reminders-list";
 import { DebtReminderToggleList } from "@/components/reminders/debt-reminder-toggle-list";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Reminders" };
 
@@ -29,6 +30,9 @@ type UserWithReminderPreferences = Awaited<ReturnType<typeof requireUser>> & {
 
 export default async function RemindersPage() {
   const user = (await requireUser()) as UserWithReminderPreferences;
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
 
   if (tier === "free") {

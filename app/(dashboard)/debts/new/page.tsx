@@ -12,6 +12,7 @@ import { countActiveDebtsByUserId } from "@/server/services/debt.service";
 import { FREE_PLAN_DEBT_LIMIT } from "@/server/services/access.service";
 import { Navbar } from "@/components/layout/navbar";
 import { DebtForm } from "@/components/debt/debt-form";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Add Debt",
@@ -19,6 +20,9 @@ export const metadata: Metadata = {
 
 export default async function NewDebtPage() {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   const tier = user.subscriptionTier as "free" | "pro";
 
   // Pre-flight: check limit before rendering the form

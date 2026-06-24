@@ -36,6 +36,9 @@ import {
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   return next({ ctx: { userId: user.id } });
 });
 

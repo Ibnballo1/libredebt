@@ -16,9 +16,13 @@ import { checkFeatureAccess } from "@/server/services/access.service";
 import { toMinorUnits } from "@/lib/utils";
 import { runWhatIfSimulation } from "@/server/services/simulation.service";
 import { runSimulationSchema } from "@/server/validators/simulation.schema";
+import { redirect } from "next/navigation";
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+  if (!user) {
+    redirect("/login"); // ✅ ONLY place redirect happens
+  }
   return next({
     ctx: {
       userId: user.id,
