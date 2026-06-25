@@ -199,6 +199,18 @@ export async function getPendingDueSoonReminders(): Promise<PendingReminder[]> {
 export async function getUpcomingRemindersForUser(userId: string) {
   const now = new Date();
 
+  // Set the boundary to the absolute end of today (23:59:59)
+  // so that reminders scheduled for today vanish from the "Upcoming" view.
+  const endOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
   return db
     .select({
       id: reminders.id,
@@ -213,7 +225,7 @@ export async function getUpcomingRemindersForUser(userId: string) {
       and(
         eq(reminders.userId, userId),
         eq(reminders.status, "pending"),
-        gte(reminders.remindAt, now), // 👈 Strictly database-gated to the future
+        gte(reminders.remindAt, endOfToday),
       ),
     )
     .orderBy(reminders.remindAt)

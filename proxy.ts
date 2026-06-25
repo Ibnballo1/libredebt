@@ -83,7 +83,11 @@ const PROTECTED_ROUTES = [
   "/payments",
   "/strategies",
   "/reminders",
+  "/simulations",
+  "/analytics",
   "/settings",
+  "/help",
+  "/admin",
 ];
 
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
