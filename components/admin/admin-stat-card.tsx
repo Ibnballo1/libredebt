@@ -1,10 +1,5 @@
 /**
  * components/admin/admin-stat-card.tsx
- *
- * Dark-theme stat card for the admin surface. Deliberately distinct
- * from the regular dashboard's StatCard (white background, emerald
- * accent) — reinforces that this is a different surface, not the same
- * UI with extra data bolted on.
  */
 
 type AdminStatCardProps = {
@@ -28,14 +23,21 @@ export function AdminStatCard({
 
   return (
     <div
-      className="rounded-lg border border-[#1E2530] bg-[#11151F] p-4"
-      style={{ borderLeftWidth: 2, borderLeftColor: accentColor }}
+      className="rounded-lg border border-[#1E2530] bg-[#11151F] p-4 transition-all duration-200"
+      style={{ borderLeftWidth: 3, borderLeftColor: accentColor }} // Slightly increased width for clearer distinction
     >
-      <p className="text-[9px] font-bold tracking-widest uppercase text-[#475569] mb-1.5">
+      <p className="text-[9px] font-bold tracking-widest uppercase text-[#475569] mb-1.5 truncate">
         {label}
       </p>
-      <p className="text-xl font-bold text-white tabular-nums">{value}</p>
-      {sub && <p className="text-[10px] text-[#64748B] mt-1">{sub}</p>}
+      {/* Added responsive scaling values and fallback word-breaking properties */}
+      <p className="text-lg font-bold text-white tabular-nums sm:text-xl break-words tracking-tight">
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[10px] text-[#64748B] mt-1 leading-snug sm:line-clamp-1">
+          {sub}
+        </p>
+      )}
     </div>
   );
 }

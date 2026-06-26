@@ -29,15 +29,21 @@ export default async function AdminOverviewPage() {
       : "0.0";
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-xl font-bold text-white">System Overview</h1>
-        <p className="text-sm text-[#64748B] mt-1">
+    // Removed strict desktop-bound padding ('p-8') and max-width.
+    // The AdminShell wrapper now handles structural content spacing fluidly.
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-xl font-bold text-white md:text-2xl">
+          System Overview
+        </h1>
+        <p className="text-xs text-[#64748B] mt-1 md:text-sm">
           Read-only — observability across all users and accounts
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+      {/* Group 1 Metrics Card Block */}
+      {/* Handled reflow natively: grid-cols-1 on mobile, grid-cols-2 on small devices (sm:), grid-cols-4 on desktops (lg:) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AdminStatCard
           label="Total users"
           value={overview.totalUsers.toLocaleString()}
@@ -65,7 +71,8 @@ export default async function AdminOverviewPage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+      {/* Group 2 Financial Indicators Block */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AdminStatCard
           label="Active debts"
           value={overview.totalActiveDebts.toLocaleString()}
@@ -98,7 +105,10 @@ export default async function AdminOverviewPage() {
         />
       </div>
 
-      <SignupGrowthChart data={growth} />
+      {/* Overflow wrapper protects the chart container block from container blowouts on mobile screens */}
+      <div className="w-full overflow-x-auto rounded-xl border border-[#1E2530] bg-[#0E131F] p-1">
+        <SignupGrowthChart data={growth} />
+      </div>
     </div>
   );
 }
