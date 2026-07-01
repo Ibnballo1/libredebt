@@ -49,7 +49,7 @@ export const startPaystackCheckoutAction = authAction.action(
         email: userEmail,
         userId,
         callbackUrl: `${APP_URL}/settings?tab=billing&provider=paystack`,
-        amountMinor: 99900, // ₦999.00
+        amountMinor: 15000, // ₦150.00
       });
 
       return { success: true as const, redirectUrl: result.authorization_url };

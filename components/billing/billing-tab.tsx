@@ -195,7 +195,7 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
 
         <div className="flex items-end gap-1 mb-1">
           <p className="text-3xl font-bold text-[#0F172A]">
-            {currency === "NGN" ? "₦999" : "$0.89"}
+            {currency === "NGN" ? "₦150" : "$0.89"}
           </p>
           <p className="text-sm text-[#64748B] mb-1">/month</p>
         </div>
