@@ -1,18 +1,5 @@
 /**
  * app/(dashboard)/overview/page.tsx — Main Dashboard
- *
- * REPLACES the stub from Step 4.
- *
- * Fully wired to real ledger data via getDashboardStats().
- * Server Component — no client-side fetching for the initial render.
- *
- * SECTIONS:
- *   1. Debt limit banner (free users at/near limit)
- *   2. Four stat cards (total, repaid, remaining, progress %)
- *   3. Overall progress bar
- *   4. Debt breakdown list (each debt's progress)
- *   5. Recent activity feed (last 5 payments)
- *   6. Empty state (no debts yet)
  */
 
 import type { Metadata } from "next";
@@ -26,14 +13,14 @@ import { StatCard, EmptyState, DebtLimitBanner } from "@/components/shared";
 import { DebtProgressList } from "@/components/dashboard/debt-progress-list";
 import { RecentActivityFeed } from "@/components/dashboard/recent-activity-feed";
 import { formatCurrency, calculateProgressPercent } from "@/lib/utils";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Overview" };
 
 export default async function OverviewPage() {
   const user = await requireUser();
   if (!user) {
-    redirect("/login"); // ✅ ONLY place redirect happens
+    notFound();
   }
   const tier = user.subscriptionTier as "free" | "pro";
   const currency = user.currency ?? "NGN";

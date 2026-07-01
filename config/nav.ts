@@ -12,6 +12,7 @@ import {
   Receipt,
   TrendingDown,
   Bell,
+  HandCoins,
   Settings,
   HelpCircle,
 } from "lucide-react";
@@ -55,6 +56,13 @@ export const primaryNav: NavSection[] = [
         label: "Debts",
         href: "/debts",
         icon: CreditCard,
+        stage: 1,
+        disabled: false,
+      },
+      {
+        label: "Receivables",
+        href: "/receivables",
+        icon: HandCoins,
         stage: 1,
         disabled: false,
       },

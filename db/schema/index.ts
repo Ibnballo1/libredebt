@@ -5,6 +5,7 @@ export * from "./debts";
 export * from "./ledger";
 export * from "./subscriptions";
 export * from "./reminders";
+export * from "./receivables";
 
 // ─── DRIZZLE RELATIONAL LAYER ────────────────────────────────────────────────
 import { relations } from "drizzle-orm";
@@ -13,6 +14,8 @@ import { debts } from "./debts";
 import { ledgerEntries } from "./ledger";
 import { subscriptions } from "./subscriptions";
 import { reminders } from "./reminders";
+import { receivables } from "./receivables";
+// import {receivable_ledger_entries} from "./receivables";
 
 /**
  * User Profiles Relational Ecosystem
@@ -22,6 +25,7 @@ export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
   subscriptions: many(subscriptions),
   ledgerEntries: many(ledgerEntries),
   reminders: many(reminders),
+  receivables: many(receivables),
 }));
 
 /**
@@ -34,6 +38,7 @@ export const debtsRelations = relations(debts, ({ one, many }) => ({
   }),
   ledgerEntries: many(ledgerEntries),
   reminders: many(reminders),
+  receivables: many(receivables),
 }));
 
 /**

@@ -31,6 +31,8 @@ export default async function DashboardLayout({
   // Defense-in-depth security barrier layer
   const session = await requireSession();
 
+  console.log("Server session:", session);
+
   if (!session) {
     redirect("/login");
   }
