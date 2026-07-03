@@ -20,6 +20,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { EmptyState } from "@/components/shared";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
 import { redirect } from "next/navigation";
+import { ExportButtons } from "@/components/export/export-buttons";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -32,6 +33,7 @@ export default async function PaymentsPage() {
   const currency = user.currency ?? "NGN";
 
   const payments = await getPaymentHistory(user.id, 100);
+  const activeCount = payments.length;
 
   // Group payments by month for a cleaner chronological display
   const grouped = groupByMonth(payments);
@@ -46,6 +48,17 @@ export default async function PaymentsPage() {
             : "No payments yet"
         }
         tier={tier}
+        actions={
+          <div className="flex items-center gap-3">
+            <ExportButtons type="payments" count={activeCount} />
+            <Link
+              href="/debts"
+              className="inline-flex items-center gap-2 rounded-md bg-[#0F172A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1E293B] transition-colors"
+            >
+              Go to Debts
+            </Link>
+          </div>
+        }
       />
 
       {/* FIXED: Changed max-w-3xl to an explicit responsive container matching standard professional dashboard configurations */}
