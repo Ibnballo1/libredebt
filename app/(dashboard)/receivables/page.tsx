@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared";
 import { ReceivableCard } from "@/components/receivable/receivable-card";
 import { formatCurrency } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import { ExportButtons } from "@/components/export/export-buttons";
 
 export const metadata: Metadata = { title: "Receivables" };
 
@@ -22,6 +23,7 @@ export default async function ReceivablesPage() {
   const currency = user.currency ?? "NGN";
 
   const receivables = await getActiveReceivablesByUserId(user.id);
+  const activeCount = receivables.length;
   const totalOwedToUser = receivables.reduce(
     (sum, r) => sum + r.currentBalanceMinor,
     0,
@@ -38,13 +40,16 @@ export default async function ReceivablesPage() {
         }
         tier={tier}
         actions={
-          <Link
-            href="/receivables/new"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-            Add receivable
-          </Link>
+          <div className="flex items-center gap-3">
+            <ExportButtons type="receivables" count={activeCount} />
+            <Link
+              href="/receivables/new"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Add receivable
+            </Link>
+          </div>
         }
       />
 

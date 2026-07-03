@@ -24,6 +24,7 @@ import { DebtCard } from "@/components/debt/debt-card";
 import { EmptyState, DebtLimitBanner } from "@/components/shared";
 import { FREE_PLAN_DEBT_LIMIT } from "@/server/services/access.service";
 import { redirect } from "next/navigation";
+import { ExportButtons } from "@/components/export/export-buttons";
 
 export const metadata: Metadata = {
   title: "Debts",
@@ -54,7 +55,9 @@ export default async function DebtsPage() {
         }
         tier={tier}
         actions={
-          canAddDebt ? (
+          <>
+            <ExportButtons type="debts" count={activeCount} />
+            canAddDebt ? (
             <Link
               href="/debts/new"
               className="inline-flex items-center gap-1.5 rounded-md bg-[#0F172A] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#1E293B] transition-colors"
@@ -62,8 +65,7 @@ export default async function DebtsPage() {
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               Add Debt
             </Link>
-          ) : (
-            /* Disabled state — at free limit */
+            ) : (
             <div className="relative">
               <button
                 disabled
@@ -75,7 +77,8 @@ export default async function DebtsPage() {
                 Add Debt
               </button>
             </div>
-          )
+            )
+          </>
         }
       />
 
