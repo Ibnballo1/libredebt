@@ -1,11 +1,9 @@
 /**
- * components/billing/billing-tab.tsx
+ * components/billing/billing-tab.tsx (Paystack-only, 2 plans, trial UI)
  *
- * The billing tab content inside /settings.
- * Two states:
- *   - Free user: shows Free vs Pro comparison, two checkout buttons
- *     (Paystack for NGN, Stripe for everything else)
- *   - Pro user: shows current plan, renewal date, cancel button
+ * Free/Trial users: two plan cards side by side (6-month vs 1-year)
+ *   with a trial countdown banner if still within 3 days of signup.
+ * Pro users: current plan card + renewal date + cancel option.
  */
 
 "use client";
@@ -13,7 +11,7 @@
 import { useState } from "react";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
-import { Check, Sparkles, AlertTriangle } from "lucide-react";
+import { Check, Sparkles, Clock, Zap } from "lucide-react";
 import {
   startPaystackCheckoutAction,
   cancelSubscriptionAction,
@@ -30,9 +28,10 @@ import { formatDate, cn } from "@/lib/utils";
 
 type BillingTabProps = {
   tier: "free" | "pro";
-  currency: string;
+  trialDaysLeft: number;
+  isInTrial: boolean;
   subscription: {
-    provider: "paystack" | "stripe";
+    provider: "paystack";
     status: string;
     currentPeriodEnd: Date | null;
   } | null;
@@ -44,12 +43,37 @@ const PRO_FEATURES = [
   "Debt Snowball & Avalanche strategies",
   "What-if payoff simulations",
   "Advanced analytics & charts",
+  "CSV & PDF data exports",
+  "Track receivables (people who owe you)",
 ];
 
-export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
+const PLANS = [
+  {
+    key: "6month" as const,
+    label: "6 Months",
+    price: "₦3,000",
+    perMonth: "₦500/mo",
+    badge: null,
+  },
+  {
+    key: "1year" as const,
+    label: "1 Year",
+    price: "₦5,500",
+    perMonth: "₦458/mo",
+    badge: "Best value — save ₦500",
+  },
+];
 
-  const { execute: startPaystack, isPending: paystackPending } = useAction(
+export function BillingTab({
+  tier,
+  trialDaysLeft,
+  isInTrial,
+  subscription,
+}: BillingTabProps) {
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"6month" | "1year">("1year");
+
+  const { execute: startCheckout, isPending: isCheckingOut } = useAction(
     startPaystackCheckoutAction,
     {
       onSuccess: ({ data }) => {
@@ -61,19 +85,6 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
       },
     },
   );
-
-  // const { execute: startStripe, isPending: stripePending } = useAction(
-  //   startStripeCheckoutAction,
-  //   {
-  //     onSuccess: ({ data }) => {
-  //       if (data?.success && data.redirectUrl) {
-  //         window.location.href = data.redirectUrl;
-  //       } else {
-  //         toast.error(data?.error ?? "Could not start checkout");
-  //       }
-  //     },
-  //   },
-  // );
 
   const { execute: cancel, isPending: cancelPending } = useAction(
     cancelSubscriptionAction,
@@ -89,6 +100,7 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
     },
   );
 
+  // ── Pro state ────────────────────────────────────────────────────────────────
   if (tier === "pro") {
     return (
       <div className="space-y-5">
@@ -102,10 +114,7 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
                 <p className="text-sm font-bold text-[#0F172A]">
                   LibreDebt Pro
                 </p>
-                <p className="text-xs text-[#64748B]">
-                  via{" "}
-                  {subscription?.provider === "stripe" ? "Stripe" : "Paystack"}
-                </p>
+                <p className="text-xs text-[#64748B]">via Paystack</p>
               </div>
             </div>
             <span className="rounded-full bg-[#10B981]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#10B981]">
@@ -117,7 +126,7 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
             <p className="text-sm text-[#475569]">
               {subscription.status === "canceled" ? (
                 <>
-                  Your Pro access ends on{" "}
+                  Pro access ends on{" "}
                   <strong className="text-[#0F172A]">
                     {formatDate(subscription.currentPeriodEnd, "long")}
                   </strong>
@@ -153,31 +162,26 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
                 billing period
                 {subscription?.currentPeriodEnd &&
                   ` (${formatDate(subscription.currentPeriodEnd, "long")})`}
-                . After that, your account moves to the Free plan and premium
-                features will be disabled.
+                . After that your account moves to the free plan.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <button
                 onClick={() => setShowCancelDialog(false)}
                 disabled={cancelPending}
-                className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
+                className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"
               >
                 Keep Pro
               </button>
               <button
                 onClick={() => cancel()}
                 disabled={cancelPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
               >
                 {cancelPending ? (
-                  <>
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Cancelling…
-                  </>
-                ) : (
-                  "Cancel subscription"
-                )}
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : null}
+                {cancelPending ? "Cancelling…" : "Cancel subscription"}
               </button>
             </DialogFooter>
           </DialogContent>
@@ -186,81 +190,107 @@ export function BillingTab({ tier, currency, subscription }: BillingTabProps) {
     );
   }
 
+  // ── Free / Trial state ────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border-2 border-[#10B981] bg-white p-6 relative shadow-lg shadow-[#10B981]/10">
-        <div className="absolute -top-3 left-6 rounded-full bg-[#10B981] px-3 py-0.5 text-[10px] font-bold text-white">
-          Recommended
+      {/* Trial countdown banner */}
+      {isInTrial && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              {trialDaysLeft === 0
+                ? "Your free trial ends today"
+                : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left in your free trial`}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Upgrade now to keep full access to all Pro features.
+            </p>
+          </div>
         </div>
+      )}
 
-        <div className="flex items-end gap-1 mb-1">
-          <p className="text-3xl font-bold text-[#0F172A]">
-            {currency === "NGN" ? "₦150" : "$0.89"}
-          </p>
-          <p className="text-sm text-[#64748B] mb-1">/month</p>
-        </div>
-        <p className="text-sm text-[#64748B] mb-5">
-          Cancel anytime. Keep access until period end.
+      {/* Feature list */}
+      <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-[#94A3B8] mb-3">
+          Everything in Pro
         </p>
-
-        <ul className="space-y-2.5 mb-6">
-          {PRO_FEATURES.map((feature) => (
-            <li
-              key={feature}
-              className="flex items-center gap-2.5 text-sm text-[#475569]"
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {PRO_FEATURES.map((f) => (
+            <div
+              key={f}
+              className="flex items-center gap-2 text-sm text-[#475569]"
             >
-              <Check className="h-4 w-4 text-[#10B981] flex-shrink-0" />
-              {feature}
-            </li>
+              <Check className="h-3.5 w-3.5 text-[#10B981] flex-shrink-0" />
+              {f}
+            </div>
           ))}
-        </ul>
-
-        <div className="space-y-2.5">
-          {currency === "NGN" && (
-            <>
-              <button
-                onClick={() => startPaystack()}
-                disabled={paystackPending}
-                className={cn(
-                  "w-full rounded-lg bg-[#10B981] px-4 py-3 text-sm font-semibold text-white",
-                  "hover:bg-[#059669] transition-colors disabled:opacity-50",
-                  "flex items-center justify-center gap-2",
-                )}
-              >
-                {paystackPending ? (
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : null}
-                Pay with Paystack
-              </button>
-              {/* <button
-                onClick={() => startStripe()}
-                disabled={stripePending}
-                className="w-full rounded-lg border border-[#E2E8F0] px-4 py-3 text-sm font-semibold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-              >
-                Pay with card (Stripe)
-              </button> */}
-            </>
-          )}
-          {/* <button
-              onClick={() => startStripe()}
-              disabled={stripePending}
-              className={cn(
-                "w-full rounded-lg bg-[#10B981] px-4 py-3 text-sm font-semibold text-white",
-                "hover:bg-[#059669] transition-colors disabled:opacity-50",
-                "flex items-center justify-center gap-2",
-              )}
-            >
-              {stripePending ? (
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : null}
-              Upgrade with Stripe
-            </button> */}
         </div>
       </div>
 
-      <p className="text-xs text-[#94A3B8] text-center flex items-center justify-center gap-1.5">
-        <AlertTriangle className="h-3 w-3" />
-        You&apos;ll be redirected to a secure checkout page to complete payment
+      {/* Plan selector */}
+      <div className="grid grid-cols-2 gap-4">
+        {PLANS.map((plan) => (
+          <button
+            key={plan.key}
+            onClick={() => setSelectedPlan(plan.key)}
+            className={cn(
+              "relative rounded-xl border-2 p-4 text-left transition-all",
+              selectedPlan === plan.key
+                ? "border-[#10B981] bg-[#10B981]/5 shadow-md shadow-[#10B981]/10"
+                : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1]",
+            )}
+          >
+            {plan.badge && (
+              <span className="absolute -top-2.5 left-4 rounded-full bg-[#10B981] px-2.5 py-0.5 text-[9px] font-bold text-white">
+                {plan.badge}
+              </span>
+            )}
+            <p className="text-sm font-bold text-[#0F172A] mt-1">
+              {plan.label}
+            </p>
+            <p className="text-2xl font-bold text-[#0F172A] mt-1">
+              {plan.price}
+            </p>
+            <p className="text-xs text-[#64748B] mt-0.5">
+              {plan.perMonth} billed once
+            </p>
+
+            {selectedPlan === plan.key && (
+              <div className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981]">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Pay button */}
+      <button
+        onClick={() => startCheckout({ plan: selectedPlan })}
+        disabled={isCheckingOut}
+        className={cn(
+          "w-full rounded-lg bg-[#10B981] px-4 py-3.5 text-sm font-semibold text-white",
+          "hover:bg-[#059669] transition-colors disabled:opacity-50",
+          "flex items-center justify-center gap-2",
+        )}
+      >
+        {isCheckingOut ? (
+          <>
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            Redirecting to Paystack…
+          </>
+        ) : (
+          <>
+            <Zap className="h-4 w-4" />
+            Pay {selectedPlan === "6month" ? "₦3,000" : "₦5,500"} with Paystack
+          </>
+        )}
+      </button>
+
+      <p className="text-xs text-[#94A3B8] text-center">
+        Secure payment via Paystack. Accepts cards, bank transfers & USSD.
+        Cancel anytime.
       </p>
     </div>
   );
