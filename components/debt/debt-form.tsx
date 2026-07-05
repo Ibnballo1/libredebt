@@ -208,7 +208,10 @@ export function DebtForm(props: DebtFormProps) {
           });
           router.push("/debts");
           router.refresh();
-        } else if (data?.code === "DEBT_LIMIT_REACHED") {
+        } else if (
+          data?.code === "LIMIT_REACHED" ||
+          data?.code === "UPGRADE_REQUIRED"
+        ) {
           setServerError(data.error ?? "Debt limit reached.");
           toast.error("Upgrade required", { description: data.error });
         } else {

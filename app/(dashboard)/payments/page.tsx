@@ -19,27 +19,22 @@ import { getPaymentHistory } from "@/server/services/dashboard.service";
 import { Navbar } from "@/components/layout/navbar";
 import { EmptyState } from "@/components/shared";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
-import { redirect } from "next/navigation";
-import { ExportButtons } from "@/components/export/export-buttons";
 
 export const metadata: Metadata = { title: "Payments" };
 
 export default async function PaymentsPage() {
   const user = await requireUser();
-  if (!user) {
-    redirect("/login"); // ✅ ONLY place redirect happens
-  }
+  if (!user) throw new Error("User not found");
   const tier = user.subscriptionTier as "free" | "pro";
   const currency = user.currency ?? "NGN";
 
   const payments = await getPaymentHistory(user.id, 100);
-  const activeCount = payments.length;
 
   // Group payments by month for a cleaner chronological display
   const grouped = groupByMonth(payments);
 
   return (
-    <div className="flex flex-col flex-1 w-full">
+    <div className="flex flex-col flex-1">
       <Navbar
         title="Payments"
         description={
@@ -48,21 +43,9 @@ export default async function PaymentsPage() {
             : "No payments yet"
         }
         tier={tier}
-        actions={
-          <div className="flex items-center gap-3">
-            <ExportButtons type="payments" count={activeCount} />
-            <Link
-              href="/debts"
-              className="inline-flex items-center gap-2 rounded-md bg-[#0F172A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1E293B] transition-colors"
-            >
-              Go to Debts
-            </Link>
-          </div>
-        }
       />
 
-      {/* FIXED: Changed max-w-3xl to an explicit responsive container matching standard professional dashboard configurations */}
-      <div className="flex-1 p-6 w-full max-w-7xl mx-auto">
+      <div className="flex-1 p-6 max-w-3xl">
         {payments.length === 0 ? (
           <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm">
             <EmptyState
@@ -109,9 +92,9 @@ export default async function PaymentsPage() {
 
             {/* Grouped by month */}
             {grouped.map(({ monthLabel, entries }) => (
-              <div key={monthLabel} className="space-y-3">
+              <div key={monthLabel}>
                 {/* Month header */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-3">
                   <p className="text-[10px] font-bold tracking-widest uppercase text-[#94A3B8] whitespace-nowrap">
                     {monthLabel}
                   </p>
@@ -139,7 +122,7 @@ export default async function PaymentsPage() {
                       <Link
                         key={payment.id}
                         href={`/debts/${payment.debtId}`}
-                        className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:bg-[#F8FAFC]"
+                        className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:bg-[#F8FAFC]"
                         style={{
                           borderBottom:
                             index < entries.length - 1
@@ -147,54 +130,52 @@ export default async function PaymentsPage() {
                               : "none",
                         }}
                       >
-                        <div className="flex items-start gap-4 min-w-0 flex-1">
-                          {/* Payment icon */}
-                          <div
-                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F0FDF9] mt-0.5"
-                            aria-hidden="true"
-                          >
-                            <span className="text-sm font-bold text-[#10B981]">
-                              ↑
+                        {/* Payment icon */}
+                        <div
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F0FDF9] mt-0.5"
+                          aria-hidden="true"
+                        >
+                          <span className="text-sm font-bold text-[#10B981]">
+                            ↓
+                          </span>
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-[#0F172A]">
+                              {payment.debtName}
+                            </p>
+                            <span className="text-[10px] text-[#94A3B8]">
+                              {payment.creditor}
                             </span>
                           </div>
-
-                          {/* Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                              <p className="text-sm font-semibold text-[#0F172A] truncate">
-                                {payment.debtName}
-                              </p>
-                              <span className="text-[10px] text-[#94A3B8] truncate">
-                                {payment.creditor}
-                              </span>
-                            </div>
-                            {payment.note && (
-                              <p className="text-xs text-[#64748B] mt-0.5 break-words">
-                                {payment.note}
-                              </p>
-                            )}
-                            <time
-                              dateTime={payment.effectiveDate.toISOString()}
-                              className="text-[10px] text-[#94A3B8] mt-1 flex items-center gap-1.5 whitespace-nowrap"
-                            >
-                              {formatDate(payment.effectiveDate, "medium")}
-                              <span className="text-[#E2E8F0]" aria-hidden>
-                                ·
-                              </span>
-                              {formatRelativeTime(payment.effectiveDate)}
-                            </time>
-                          </div>
+                          {payment.note && (
+                            <p className="text-xs text-[#64748B] mt-0.5">
+                              {payment.note}
+                            </p>
+                          )}
+                          <time
+                            dateTime={payment.effectiveDate.toISOString()}
+                            className="text-[10px] text-[#94A3B8] mt-1 flex items-center gap-1.5"
+                          >
+                            {formatDate(payment.effectiveDate, "medium")}
+                            <span className="text-[#E2E8F0]" aria-hidden>
+                              ·
+                            </span>
+                            {formatRelativeTime(payment.effectiveDate)}
+                          </time>
                         </div>
 
                         {/* Amount */}
-                        <div className="flex-shrink-0 text-right self-center">
+                        <div className="flex-shrink-0 text-right">
                           <p className="text-sm font-bold text-[#10B981] tabular-nums">
                             −
                             {formatCurrency(absAmount, {
-                              currency: payment.currency,
+                              currency,
                             })}
                           </p>
-                          <p className="text-[10px] text-[#94A3B8] mt-0.5 uppercase tracking-wider font-semibold">
+                          <p className="text-[10px] text-[#94A3B8] mt-0.5">
                             payment
                           </p>
                         </div>
