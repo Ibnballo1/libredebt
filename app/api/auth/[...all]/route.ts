@@ -22,6 +22,8 @@
 import { auth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
+export const dynamic = "force-dynamic";
+
 /**
  * toNextJsHandler converts BetterAuth's handler to Next.js App Router format.
  * It exports named GET and POST handlers as required by the App Router.
