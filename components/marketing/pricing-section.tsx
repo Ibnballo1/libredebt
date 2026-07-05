@@ -2,11 +2,15 @@
  * components/marketing/pricing-section.tsx
  *
  * Strategic tiered pricing cards mapping conversion steps.
- * Refactored to pass absolute landmark checks and support global configuration tokens.
+ * Updated to support Paystack 6-Month and 1-Year plans with dynamic switching.
  */
 
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const FREE_FEATURES = [
   "Up to 3 active debts",
@@ -29,7 +33,25 @@ const PRO_FEATURES = [
   "Priority support",
 ] as const;
 
+// Paystack Billing Cycles Configuration
+const PRO_PLANS = {
+  halfYearly: {
+    label: "6 Months",
+    priceDisplay: "₦3,000",
+    subText: "Billed every 6 months (₦500/mo)",
+  },
+  yearly: {
+    label: "1 Year",
+    priceDisplay: "₦5,500",
+    subText: "Billed annually (₦458/mo) — Save 20%",
+  },
+} as const;
+
+type PlanInterval = keyof typeof PRO_PLANS;
+
 export function PricingSection() {
+  const [interval, setInterval] = useState<PlanInterval>("yearly");
+
   return (
     <section
       id="pricing"
@@ -52,7 +74,7 @@ export function PricingSection() {
         </div>
 
         {/* Framing Text Rows */}
-        <div className="mb-14 text-center">
+        <div className="mb-10 text-center">
           <h2
             id="pricing-heading"
             className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl leading-tight dark:text-slate-50"
@@ -60,8 +82,29 @@ export function PricingSection() {
             Start free. Upgrade when you&apos;re ready.
           </h2>
           <p className="mt-4 text-base md:text-lg text-slate-600 dark:text-slate-400">
-            No trial periods. No hidden fees. Cancel Pro anytime.
+            Choose a plan that scales with your financial freedom journey.
           </p>
+        </div>
+
+        {/* ─── Dynamic Plan Toggle ─────────────────────────────────────────── */}
+        <div className="mb-12 flex justify-center">
+          <div className="relative flex rounded-lg bg-slate-200/60 p-1 dark:bg-slate-800/60">
+            {(Object.keys(PRO_PLANS) as PlanInterval[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setInterval(key)}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-xs font-semibold transition-all",
+                  interval === key
+                    ? "bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-slate-50"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200",
+                )}
+              >
+                {PRO_PLANS[key].label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ─── Pricing Grid Systems ─────────────────────────────────────────── */}
@@ -74,7 +117,7 @@ export function PricingSection() {
                   Free Plan
                 </p>
                 <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
-                  $0
+                  ₦0
                 </p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Perfect for getting started
@@ -118,18 +161,15 @@ export function PricingSection() {
             <div>
               <div className="mb-6">
                 <p className="text-[10px] font-bold tracking-widest uppercase text-emerald-500 mb-2">
-                  Pro Plan
+                  Pro Plan ({PRO_PLANS[interval].label})
                 </p>
                 <div className="flex items-end gap-1">
-                  <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
-                    $5
-                  </p>
-                  <p className="text-slate-500 mb-1 text-sm dark:text-slate-400">
-                    /month
+                  <p className="text-4xl font-bold text-slate-900 transition-all dark:text-slate-50">
+                    {PRO_PLANS[interval].priceDisplay}
                   </p>
                 </div>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  For serious debt payoff
+                  {PRO_PLANS[interval].subText}
                 </p>
               </div>
 
@@ -151,21 +191,21 @@ export function PricingSection() {
 
             <div>
               <Link
-                href="/register"
+                href={`/register?plan=pro&interval=${interval}`}
                 className="block w-full rounded-lg bg-emerald-500 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/10"
               >
-                Start Pro Free Trial
+                Upgrade to Pro
               </Link>
               <p className="mt-3 text-center text-xs text-slate-400">
-                No credit card required to start
+                Securely managed subscription via Paystack
               </p>
             </div>
           </div>
         </div>
 
-        {/* Dynamic Stripe Integration Subtitle */}
+        {/* Dynamic Paystack Subtitle */}
         <p className="mt-12 text-center text-xs text-slate-400">
-          Payments processed securely via Stripe and Paystack.
+          Payments processed securely via Paystack.
         </p>
       </div>
     </section>

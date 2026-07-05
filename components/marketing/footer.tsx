@@ -65,23 +65,23 @@ const FOOTER_COLUMNS = [
     links: [
       { label: "Features", href: "#features" },
       { label: "Pricing", href: "#pricing" },
-      { label: "Changelog", href: "/changelog" },
+      // { label: "Changelog", href: "/changelog" },
     ],
   },
   {
     heading: "Company",
     links: [
-      { label: "About", href: "/about" },
-      { label: "Contact", href: "/contact" },
-      { label: "Blog", href: "/blog" },
+      { label: "About", href: "/#" },
+      { label: "Contact", href: "/#" },
+      { label: "Blog", href: "/#" },
     ],
   },
   {
     heading: "Resources",
     links: [
       { label: "FAQ", href: "#faq" },
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
+      // { label: "Privacy Policy", href: "/privacy" },
+      // { label: "Terms of Service", href: "/terms" },
     ],
   },
 ] as const;
@@ -121,7 +121,7 @@ export function Footer() {
 
             {/* Social Anchor List */}
             <div className="mt-6 flex items-center gap-3">
-              {SOCIAL_LINKS.map(({ label, href, renderIcon }) => (
+              {/*SOCIAL_LINKS.map(({ label, href, renderIcon }) => (
                 <a
                   key={label}
                   href={href}
@@ -130,10 +130,10 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-800 text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-200"
                 >
-                  {/* Renders the precise inline SVG with identical sizing constraints */}
+                  {/* Renders the precise inline SVG with identical sizing constraints *}
                   {renderIcon("h-4 w-4")}
                 </a>
-              ))}
+              ))*/}
             </div>
           </div>
 

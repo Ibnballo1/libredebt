@@ -14,7 +14,7 @@ const FAQS = [
   {
     question: "Is LibreDebt free?",
     answer:
-      "Yes. The Free plan is free forever with no credit card required. You can track up to 3 debts, record payments, and view your dashboard at no cost. The Pro plan ($5/month) unlocks unlimited debts, smart reminders, payoff strategies, and analytics.",
+      "Yes. The Free plan is free forever with no credit card required. You can track up to 3 debts, record payments, and view your dashboard at no cost. The Pro plan ($4.5/year) unlocks unlimited debts, smart reminders, payoff strategies, and analytics.",
   },
   {
     question: "Is my financial data secure?",
@@ -31,11 +31,11 @@ const FAQS = [
     answer:
       "It depends on your psychology. The Avalanche (highest interest first) saves the most money mathematically. The Snowball (smallest balance first) builds momentum through early wins. LibreDebt shows you both options with projected timelines and interest savings so you can make the right choice for your situation.",
   },
-  {
-    question: "Can I cancel Pro anytime?",
-    answer:
-      "Yes. You can cancel your Pro subscription at any time from your account settings. You'll retain Pro features until the end of your current billing period, then automatically move to the Free plan. No questions asked.",
-  },
+  // {
+  //   question: "Can I cancel Pro anytime?",
+  //   answer:
+  //     "Yes. You can cancel your Pro subscription at any time from your account settings. You'll retain Pro features until the end of your current billing period, then automatically move to the Free plan. No questions asked.",
+  // },
 ] as const;
 
 function FaqItem({ question, answer }: { question: string; answer: string }) {

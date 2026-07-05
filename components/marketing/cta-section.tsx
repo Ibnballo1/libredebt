@@ -61,9 +61,9 @@ export function CtaSection() {
         {/* ─── High Contrast Micro-Trust Badges ─────────────────────────────── */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
           {[
-            "Free forever on the basic plan",
+            // "Free forever on the basic plan",
             "No credit card required",
-            "Cancel Pro anytime",
+            // "Cancel Pro anytime",
           ].map((item) => (
             <div key={item} className="flex items-center gap-2">
               <span
