@@ -15,6 +15,7 @@ import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { SignupGrowthChart } from "@/components/admin/signup-growth-chart";
 import { formatCurrency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin Overview" };
 
 export default async function AdminOverviewPage() {
