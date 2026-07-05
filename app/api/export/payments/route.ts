@@ -10,8 +10,10 @@ import { requireUser } from "@/lib/auth-session";
 import { getPaymentsForExport } from "@/server/services/export.service";
 import { buildCsv, csvResponse } from "@/lib/csv";
 import { DocumentProps, renderToBuffer } from "@react-pdf/renderer";
-import { DebtsPdf, PaymentsPdf } from "@/lib/pdf-templates";
+import { PaymentsPdf } from "@/lib/pdf-templates";
 import React from "react";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();

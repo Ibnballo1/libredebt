@@ -10,6 +10,9 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { DebtsPdf } from "@/lib/pdf-templates";
 import React from "react";
 
+// 💡 FORCE NEXT.JS TO SKIP STATIC PRE-COLLECTION FOR THIS ROUTE
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const user = await requireUser();
 
