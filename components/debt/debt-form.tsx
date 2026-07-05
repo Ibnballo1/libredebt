@@ -210,7 +210,8 @@ export function DebtForm(props: DebtFormProps) {
           router.refresh();
         } else if (
           data?.code === "LIMIT_REACHED" ||
-          data?.code === "UPGRADE_REQUIRED"
+          data?.code === "UPGRADE_REQUIRED" ||
+          data?.code === "TRIAL_EXPIRED"
         ) {
           setServerError(data.error ?? "Debt limit reached.");
           toast.error("Upgrade required", { description: data.error });

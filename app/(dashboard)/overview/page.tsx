@@ -158,7 +158,7 @@ export default async function OverviewPage() {
                 />
                 <RecentActivityFeed
                   payments={stats.recentPayments}
-                  // currency={currency}
+                  currency={currency}
                 />
               </div>
             </>
