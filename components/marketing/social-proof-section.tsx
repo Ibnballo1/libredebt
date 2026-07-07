@@ -69,7 +69,7 @@ export function SocialProofSection() {
         />
 
         {/* ─── Product Traction Metrics ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-3 text-center">
+        {/* <div className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-3 text-center">
           {METRICS.map(({ value, label }) => (
             <div key={label} className="flex flex-col items-center sm:block">
               <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
@@ -81,7 +81,7 @@ export function SocialProofSection() {
               </p>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );

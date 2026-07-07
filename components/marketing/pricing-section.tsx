@@ -2,7 +2,7 @@
  * components/marketing/pricing-section.tsx
  *
  * Strategic tiered pricing cards mapping conversion steps.
- * Updated to support Paystack 6-Month and 1-Year plans with dynamic switching.
+ * Updated to support Paystack 6-Month and 1-Year plans with dual currency formats (NGN/USD).
  */
 
 "use client";
@@ -33,17 +33,19 @@ const PRO_FEATURES = [
   "Priority support",
 ] as const;
 
-// Paystack Billing Cycles Configuration
+// Paystack Billing Cycles Configuration with Multi-Currency Values
 const PRO_PLANS = {
   halfYearly: {
     label: "6 Months",
-    priceDisplay: "₦3,000",
-    subText: "Billed every 6 months (₦500/mo)",
+    priceDisplayNaira: "₦3,000",
+    priceDisplayDollar: "$2.00",
+    subText: "Billed every 6 months (₦500 / ~$0.33 mo)",
   },
   yearly: {
     label: "1 Year",
-    priceDisplay: "₦5,500",
-    subText: "Billed annually (₦458/mo) — Save 20%",
+    priceDisplayNaira: "₦5,500",
+    priceDisplayDollar: "$3.67",
+    subText: "Billed annually (₦458 / ~$0.31 mo) — Save 20%",
   },
 } as const;
 
@@ -116,10 +118,15 @@ export function PricingSection() {
                 <p className="text-[10px] font-bold tracking-widest uppercase text-slate-400 mb-2">
                   Free Plan
                 </p>
-                <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
-                  ₦0
-                </p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col">
+                  <p className="text-4xl font-bold text-slate-900 dark:text-slate-50">
+                    ₦0
+                  </p>
+                  <p className="text-sm font-medium text-slate-400 mt-0.5">
+                    $0 USD
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Perfect for getting started
                 </p>
               </div>
@@ -163,12 +170,15 @@ export function PricingSection() {
                 <p className="text-[10px] font-bold tracking-widest uppercase text-emerald-500 mb-2">
                   Pro Plan ({PRO_PLANS[interval].label})
                 </p>
-                <div className="flex items-end gap-1">
+                <div className="flex flex-col justify-end">
                   <p className="text-4xl font-bold text-slate-900 transition-all dark:text-slate-50">
-                    {PRO_PLANS[interval].priceDisplay}
+                    {PRO_PLANS[interval].priceDisplayNaira}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-400 mt-0.5 dark:text-slate-400">
+                    approx. {PRO_PLANS[interval].priceDisplayDollar} USD
                   </p>
                 </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   {PRO_PLANS[interval].subText}
                 </p>
               </div>
@@ -205,7 +215,8 @@ export function PricingSection() {
 
         {/* Dynamic Paystack Subtitle */}
         <p className="mt-12 text-center text-xs text-slate-400">
-          Payments processed securely via Paystack.
+          Payments processed securely via Paystack. International cards
+          accepted.
         </p>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { userProfiles } from "@/db/schema";
+import { sendWelcomeEmail } from "@/server/services/email.service";
 import { eq } from "drizzle-orm";
 
 /**
@@ -20,7 +21,8 @@ interface OnUserCreatedContext {
  * Guarantees that every user—OAuth or Email—gets a corresponding app profile row.
  */
 export async function onUserCreated(context: OnUserCreatedContext) {
-  const { id, email } = context.user;
+  const { id, email, name } = context.user;
+  const fallbackName = name || email.split("@")[0] || "LibreDebt User";
 
   try {
     // 1. Idempotency Check: Verify if a profile record mistakenly exists
@@ -48,7 +50,18 @@ export async function onUserCreated(context: OnUserCreatedContext) {
     );
 
     // ─── FUTURE INTEGRATIONS (STAGE 2+) ──────────────────────────────────────
-    // TODO: await sendWelcomeEmail(user.email, user.name)
+    // 3. Fire Transactional Welcome Communication (Non-blocking or awaited gracefully)
+    // We run this asynchronously so database hooks wrap up cleanly
+    sendWelcomeEmail({
+      toEmail: email,
+      userName: fallbackName,
+    }).catch((err) => {
+      console.error(
+        `[auth-hooks-email-error] Silent hook pipeline failure:`,
+        err,
+      );
+    });
+
     // TODO: await scheduleOnboardingReminder(user.id)
   } catch (error) {
     // Critical alert logging: Failure here means the user cannot use the app safely

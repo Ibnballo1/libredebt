@@ -52,7 +52,7 @@ export function MarketingNavbar() {
           "fixed inset-x-0 top-0 z-50 transition-all duration-200",
           scrolled
             ? "bg-slate-50/90 backdrop-blur-md border-b border-slate-200 shadow-sm dark:bg-slate-950/90 dark:border-slate-800"
-            : "bg-transparent",
+            : "bg-white",
         )}
       >
         <nav

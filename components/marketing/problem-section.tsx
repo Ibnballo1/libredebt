@@ -32,6 +32,10 @@ const PAIN_POINTS = [
     title: "No record of what you've done",
     body: "You've made real progress — but without a payment history, every month feels like starting over.",
   },
+  {
+    title: "I'm owed money, but I don't know how much",
+    body: "You lent money to friends and family, but you don't know how much they owe you or when they'll pay it back.",
+  },
 ] as const;
 
 export function ProblemSection() {
