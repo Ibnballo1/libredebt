@@ -4,26 +4,6 @@
  * A slim, persistent banner shown at the top of every dashboard page
  * while the user is in the 3-day trial. Links to /settings?tab=billing.
  *
- * HOW TO ADD TO THE DASHBOARD LAYOUT:
- * In app/(dashboard)/layout.tsx, import TrialBanner and render it above
- * the main content area. Pass trialDaysLeft from requireUser() +
- * trialDaysRemaining().
- *
- * Example in app/(dashboard)/layout.tsx:
- *
- *   import { TrialBanner } from "@/components/layout/trial-banner"
- *   import { isInTrial, trialDaysRemaining } from "@/server/services/billing.service"
- *
- *   const user = await requireUser()
- *   const inTrial = isInTrial(user.createdAt)
- *   const daysLeft = trialDaysRemaining(user.createdAt)
- *
- *   return (
- *     <div>
- *       {inTrial && <TrialBanner daysLeft={daysLeft} />}
- *       ...rest of layout...
- *     </div>
- *   )
  */
 
 import Link from "next/link";

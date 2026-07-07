@@ -22,7 +22,7 @@ import { redirect } from "next/navigation";
 import { requireSession, requireUser } from "@/lib/auth-session";
 import { Sidebar } from "@/components/layout/sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { TrialBanner } from "@/components/layout/trial-banner";
+// import { TrialBanner } from "@/components/layout/trial-banner";
 import {
   isInTrial,
   trialDaysRemaining,
@@ -46,7 +46,7 @@ export default async function DashboardLayout({
 
   return (
     <div>
-      {inTrial && <TrialBanner daysLeft={daysLeft} />}
+      {/* {inTrial && <TrialBanner daysLeft={daysLeft} />} */}
       <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
         {/* Desktop Navigation Drawer (Hidden on Viewports < 1024px) */}
         <div className="hidden lg:flex lg:w-64 lg:flex-shrink-0 lg:flex-col border-r border-slate-200 dark:border-slate-800">
