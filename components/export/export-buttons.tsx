@@ -38,7 +38,7 @@ export function ExportButtons({ type, count }: ExportButtonsProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] font-bold tracking-widest uppercase text-[#94A3B8] mr-1">
+      <span className="text-[10px] hidden md:flex font-bold tracking-widest uppercase text-[#94A3B8] mr-1">
         Export
       </span>
       <button

@@ -65,7 +65,7 @@ export default async function DebtsPage() {
                 className="inline-flex items-center gap-1.5 rounded-md bg-[#0F172A] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#1E293B] transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                Add Debt
+                <span className="hidden md:block">Add Debt</span>
               </Link>
             ) : (
               <div className="relative">
@@ -76,7 +76,7 @@ export default async function DebtsPage() {
                   className="inline-flex items-center gap-1.5 rounded-md bg-[#E2E8F0] px-3.5 py-2 text-xs font-semibold text-[#94A3B8] cursor-not-allowed"
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  Add Debt
+                  <span className="hidden md:block">Add Debt</span>
                 </button>
               </div>
             )}

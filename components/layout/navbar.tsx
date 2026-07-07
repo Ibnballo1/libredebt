@@ -75,7 +75,7 @@ export function Navbar({
         <div className="flex items-baseline gap-2">
           <h1
             className={cn(
-              "font-bold text-slate-900 dark:text-slate-50 tracking-tight leading-tight truncate",
+              "font-bold text-slate-900 hidden md:flex dark:text-slate-50 tracking-tight leading-tight truncate",
               hasBreadcrumbs ? "text-sm" : "text-base sm:text-lg",
             )}
           >
@@ -84,7 +84,7 @@ export function Navbar({
         </div>
 
         {description && (
-          <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5 truncate max-w-2xl font-medium">
+          <p className="text-xs text-slate-400 hidden md:flex dark:text-zinc-500 mt-0.5 truncate max-w-2xl font-medium">
             {description}
           </p>
         )}
