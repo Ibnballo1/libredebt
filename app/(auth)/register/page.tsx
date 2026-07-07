@@ -9,7 +9,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signUp, signIn } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { siteConfig } from "@/config/site";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -68,35 +67,43 @@ function RegisterForm() {
 
   async function onSubmit(data: RegisterFormValues) {
     setError(null);
-    await signUp.email(
-      {
+
+    try {
+      const { data: resData, error: resError } = await signUp.email({
         name: data.name,
         email: data.email,
         password: data.password,
-      },
-      {
-        onSuccess: () => {
-          router.push("/overview");
-          router.refresh();
-        },
-        onError: (ctx) => {
-          setError(
-            ctx.error.message ??
-              "Could not create your account. Please try again.",
-          );
-        },
-      },
-    );
+        callbackURL: "/overview", // Recommended if setup in your core configs
+      });
+
+      if (resError) {
+        setError(
+          resError.message ??
+            "Could not create your account. Please try again.",
+        );
+        return;
+      }
+
+      // If BetterAuth does not perform direct client side redirect automatically:
+      router.push("/overview");
+      router.refresh();
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+    }
   }
 
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
     setError(null);
-    await signIn.social({
-      provider: "google",
-      callbackURL: "/overview",
-    });
-    setGoogleLoading(false);
+    try {
+      await signIn.social({
+        provider: "google",
+        callbackURL: "/overview",
+      });
+    } catch (err) {
+      setError("Failed to initiate Google sign-in.");
+      setGoogleLoading(false);
+    }
   }
 
   return (
@@ -359,10 +366,6 @@ function RegisterForm() {
   );
 }
 
-/**
- * RegisterPage Main Entry Point
- * Suspense-isolated layout safely shielding production SSR builders from static evaluation leaks.
- */
 export default function RegisterPage() {
   return (
     <Suspense
