@@ -92,3 +92,22 @@ export async function verifyPaystackSignature(
     .digest("hex");
   return hash === signature;
 }
+
+export type PaystackVerifyResult = {
+  status: string;
+  customer: {
+    customer_code: string;
+  } | null;
+  plan: {
+    plan_code: string;
+  } | null;
+};
+
+export async function verifyPaystackTransaction(
+  reference: string,
+): Promise<PaystackVerifyResult> {
+  const result = await paystackFetch<PaystackVerifyResult>(
+    `/transaction/verify/${reference}`,
+  );
+  return result.data;
+}

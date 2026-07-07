@@ -1,13 +1,5 @@
 /**
  * components/billing/payment-success-overlay.tsx
- *
- * Shown when the user lands on /settings?tab=billing&status=success.
- *
- * FLOW:
- *   1. Mounts → polls checkSubscriptionStatusAction() every 2 seconds
- *   2. While waiting: "Confirming your payment..." spinner
- *   3. When isPro === true: full success card + plan details + "Go to dashboard"
- *   4. After 30 seconds without confirmation: timeout state with manual retry
  */
 
 "use client";
@@ -55,11 +47,23 @@ export function PaymentSuccessOverlay() {
 
   const poll = useCallback(async () => {
     pollCountRef.current++;
+
+    // Extract reference securely from current window location
+    let referenceParam: string | null = null;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      referenceParam = params.get("reference");
+    }
+
     try {
-      const result = await checkSubscriptionStatusAction();
-      if (result?.isPro) {
+      // Pass reference string down to safe action client execution
+      const result = await checkSubscriptionStatusAction({
+        reference: referenceParam,
+      });
+
+      if (result?.data?.isPro) {
         stopPolling();
-        setSubscription(result.subscription);
+        setSubscription(result.data.subscription);
         setPhase("confirmed");
         return;
       }
