@@ -163,7 +163,11 @@ export const startPaystackCheckoutAction = authAction
       console.error("[billing] Paystack init error:", error);
       return {
         success: false as const,
-        error: "Could not start checkout. Please try again.",
+        // error: "Could not start checkout. Please try again.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not start checkout. Please try again.",
       };
     }
   });
