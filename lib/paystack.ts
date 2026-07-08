@@ -95,7 +95,6 @@ export async function verifyPaystackSignature(
 
 // 1. Update the type mapping to match Paystack's data properties exactly
 export type PaystackVerifyResult = {
-  // Paystack places the payment string status INSIDE the data block
   status: "success" | "failed" | "reversed" | string;
   reference: string;
   amount: number;
@@ -103,11 +102,16 @@ export type PaystackVerifyResult = {
     customer_code: string;
     email: string;
   } | null;
-  plan: string | null; // Paystack sometimes passes plan code directly as a string or null
+  plan: string | null;
   plan_object?: {
     id: number;
     name: string;
     plan_code: string;
+  } | null;
+  // Add the metadata field here
+  metadata: {
+    userId?: string | undefined;
+    [key: string]: string | number | boolean | undefined; // Allow for other potential metadata keys
   } | null;
 };
 
