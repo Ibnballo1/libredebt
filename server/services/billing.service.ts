@@ -128,7 +128,9 @@ export async function getActiveSubscription(userId: string) {
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt));
-  return rows[rows.length - 1] ?? null;
+
+  // Since we ordered by desc(createdAt), index 0 is always the absolute newest record!
+  return rows[0] ?? null;
 }
 
 export async function findUserIdBySubscriptionId(

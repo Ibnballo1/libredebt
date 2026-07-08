@@ -29,6 +29,7 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
     }
 
     let subscription = await getActiveSubscription(user.id);
+    let currentTier = user.subscriptionTier ?? "free";
 
     // 1. Fallback sync: if DB is not active yet, but we have a transaction reference, double check with Paystack directly
     if (
@@ -59,7 +60,7 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
 
           // Re-fetch subscription row now that it's inserted
           subscription = await getActiveSubscription(user.id);
-          user.subscriptionTier = "pro"; // update reference value for return layout
+          currentTier = "pro";
         }
       } catch (err) {
         console.error(
@@ -69,11 +70,15 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
       }
     }
 
+    // Evaluate Pro status safely based on the real-time calculated database values
+    const isProUser =
+      currentTier === "pro" ||
+      (subscription && subscription.status === "active");
     const inTrial = isInTrial(user.createdAt);
 
     return {
-      tier: (user.subscriptionTier ?? "free") as "free" | "pro",
-      isPro: user.subscriptionTier === "pro",
+      tier: (isProUser ? "pro" : "free") as "free" | "pro",
+      isPro: !!isProUser,
       isInTrial: inTrial,
       trialDaysLeft: trialDaysRemaining(user.createdAt),
       trialEndsAt: trialEndsAt(user.createdAt),
