@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   const event = JSON.parse(rawBody);
 
-  // 1. Idempotency Guardrail: Check if we already processed this event
+  // 1. Idempotency Guardrail
   const existingEvent = await db
     .select({ id: subscriptions.lastWebhookEventId })
     .from(subscriptions)
@@ -74,34 +74,78 @@ export async function POST(request: NextRequest) {
         );
         const periodEnd = periodEndFromPlan(plan);
 
-        // Update with event ID tracking
-        await db
-          .update(subscriptions)
-          .set({
-            status: "active",
-            currentPeriodEnd: periodEnd,
-            lastWebhookEventId: event.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(subscriptions.providerSubscriptionId, identifier));
+        // 1. Check if the subscription already exists
+        const existing = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.providerSubscriptionId, identifier))
+          .limit(1);
 
-        // Fallback for new subscriptions
-        // (You might want to check if the update affected 0 rows, then insert)
+        if (existing.length > 0) {
+          // 2. If it exists, update it
+          await db
+            .update(subscriptions)
+            .set({
+              status: "active",
+              currentPeriodEnd: periodEnd,
+              lastWebhookEventId: event.id,
+              updatedAt: new Date(),
+              planType: plan,
+            })
+            .where(eq(subscriptions.providerSubscriptionId, identifier));
+        } else {
+          // 3. If it doesn't exist, insert it
+          await activateProSubscription({
+            userId,
+            provider: "paystack",
+            providerSubscriptionId: identifier,
+            providerCustomerId: data.customer?.customer_code ?? null,
+            currentPeriodEnd: periodEnd,
+            plan,
+          });
+
+          // Update the webhook ID for the newly created row
+          await db
+            .update(subscriptions)
+            .set({ lastWebhookEventId: event.id })
+            .where(eq(subscriptions.providerSubscriptionId, identifier));
+        }
         break;
       }
 
-      // ... [Keep other cases, but add lastWebhookEventId update to them]
+      case "subscription.not_renew": {
+        const subCode = event.data.subscription_code;
+        await db
+          .update(subscriptions)
+          .set({ status: "canceled", lastWebhookEventId: event.id })
+          .where(eq(subscriptions.providerSubscriptionId, subCode));
+        break;
+      }
 
       case "subscription.disable": {
         const subCode = event.data.subscription_code;
         const userId = await findUserIdBySubscriptionId(subCode);
         if (userId) {
           await downgradeToFree(userId);
-          // Update the record with the latest event ID
           await db
             .update(subscriptions)
             .set({ lastWebhookEventId: event.id })
             .where(eq(subscriptions.providerSubscriptionId, subCode));
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const subCode = event.data.subscription?.subscription_code;
+        if (subCode) {
+          const userId = await findUserIdBySubscriptionId(subCode);
+          if (userId) {
+            await markPastDue(userId);
+            await db
+              .update(subscriptions)
+              .set({ lastWebhookEventId: event.id })
+              .where(eq(subscriptions.providerSubscriptionId, subCode));
+          }
         }
         break;
       }

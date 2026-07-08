@@ -56,7 +56,7 @@ export async function activateProSubscription(params: {
   providerSubscriptionId: string;
   providerCustomerId: string | null;
   currentPeriodEnd: Date | null;
-  plan: BillingPlan;
+  plan: BillingPlan; // "6month" | "1year"
 }): Promise<void> {
   await db.transaction(async (tx) => {
     const existing = await tx
@@ -72,8 +72,10 @@ export async function activateProSubscription(params: {
         .update(subscriptions)
         .set({
           status: "active",
+          plan: "pro", // General tier
+          planType: params.plan, // Specific duration (6month/1year)
           currentPeriodEnd: params.currentPeriodEnd,
-          canceledAt: null,
+          canceledAt: null, // Reset cancellation date
           updatedAt: new Date(),
         })
         .where(eq(subscriptions.id, existing[0]!.id));
@@ -82,6 +84,7 @@ export async function activateProSubscription(params: {
         id: nanoid(),
         userId: params.userId,
         plan: "pro",
+        planType: params.plan, // New column added here
         status: "active",
         provider: params.provider,
         providerSubscriptionId: params.providerSubscriptionId,

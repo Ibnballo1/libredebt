@@ -30,6 +30,7 @@ export const subscriptions = pgTable(
      * The paid billing tier tier. Free users lack a subscription row completely.
      */
     plan: billingPlanEnum("plan").notNull(),
+    planType: text("plan_type"),
 
     /**
      * The processing lifecycle status mirrored directly from the vendor's engine.

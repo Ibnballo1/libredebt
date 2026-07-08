@@ -25,6 +25,8 @@ export default async function SettingsPage({
   const params = await searchParams;
   const tab = params.tab ?? "profile";
   const status = params.status;
+
+  // Re-fetch data whenever the status changes
   const user = await requireUser();
 
   if (!user) {
@@ -56,6 +58,7 @@ export default async function SettingsPage({
               )}
               {tab === "billing" && (
                 <BillingTab
+                  key={status || "default"}
                   tier={tier}
                   isInTrial={inTrial}
                   trialDaysLeft={daysLeft}
