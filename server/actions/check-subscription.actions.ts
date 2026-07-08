@@ -1,5 +1,5 @@
 /**
- * server/actions/check-subscription.actions.ts (updated for sync fallback)
+ * server/actions/check-subscription.actions.ts
  */
 
 "use server";
@@ -31,7 +31,7 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
     let subscription = await getActiveSubscription(user.id);
     let currentTier = user.subscriptionTier ?? "free";
 
-    // 1. Fallback sync: if DB is not active yet, but we have a transaction reference, double check with Paystack directly
+    // Fallback verification: Run if the DB record hasn't updated yet
     if (
       (!subscription || subscription.status !== "active") &&
       parsedInput.reference
@@ -39,16 +39,24 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
       try {
         const txData = await verifyPaystackTransaction(parsedInput.reference);
 
+        // Explicitly reading the nested string status from the data payload
         if (txData && txData.status === "success") {
-          const isOneYear = txData.plan?.plan_code === PAYSTACK_PLAN_1Y;
+          // Fallback parsing to find the plan_code securely
+          const planCode =
+            typeof txData.plan === "string"
+              ? txData.plan
+              : (txData.plan_object?.plan_code ?? "");
+
+          const isOneYear = planCode === PAYSTACK_PLAN_1Y;
           const periodEnd = new Date();
+
           if (isOneYear) {
             periodEnd.setFullYear(periodEnd.getFullYear() + 1);
           } else {
             periodEnd.setMonth(periodEnd.getMonth() + 6);
           }
 
-          // Securely write to DB right away to beat the lagging webhook
+          // Securely update database metrics
           await activateProSubscription({
             userId: user.id,
             provider: "paystack",
@@ -58,7 +66,7 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
             plan: isOneYear ? "1year" : "6month",
           });
 
-          // Re-fetch subscription row now that it's inserted
+          // Re-fetch the row to guarantee state sync before rendering
           subscription = await getActiveSubscription(user.id);
           currentTier = "pro";
         }
@@ -70,7 +78,6 @@ export const checkSubscriptionStatusAction = createSafeActionClient()
       }
     }
 
-    // Evaluate Pro status safely based on the real-time calculated database values
     const isProUser =
       currentTier === "pro" ||
       (subscription && subscription.status === "active");

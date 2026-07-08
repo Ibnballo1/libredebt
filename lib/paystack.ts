@@ -93,12 +93,20 @@ export async function verifyPaystackSignature(
   return hash === signature;
 }
 
+// 1. Update the type mapping to match Paystack's data properties exactly
 export type PaystackVerifyResult = {
-  status: string;
+  // Paystack places the payment string status INSIDE the data block
+  status: "success" | "failed" | "reversed" | string;
+  reference: string;
+  amount: number;
   customer: {
     customer_code: string;
+    email: string;
   } | null;
-  plan: {
+  plan: string | null; // Paystack sometimes passes plan code directly as a string or null
+  plan_object?: {
+    id: number;
+    name: string;
     plan_code: string;
   } | null;
 };
@@ -106,6 +114,7 @@ export type PaystackVerifyResult = {
 export async function verifyPaystackTransaction(
   reference: string,
 ): Promise<PaystackVerifyResult> {
+  // paystackFetch already returns json.data directly!
   const result = await paystackFetch<PaystackVerifyResult>(
     `/transaction/verify/${reference}`,
   );
