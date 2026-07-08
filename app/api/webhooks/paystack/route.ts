@@ -1,14 +1,13 @@
 /**
- * app/api/webhooks/paystack/route.ts (updated for 2 plans)
- *
- * Same security model as before — HMAC-SHA512 signature verification
- * before any database write. Now also tracks which plan (6month vs 1year)
- * was purchased so we can compute the correct currentPeriodEnd.
+ * app/api/webhooks/paystack/route.ts (updated for sync parity)
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyPaystackSignature } from "@/lib/paystack";
+import { db } from "@/db";
+import { subscriptions } from "@/db/schema";
+import { eq, or } from "drizzle-orm";
 import {
   activateProSubscription,
   downgradeToFree,
@@ -22,7 +21,7 @@ export const dynamic = "force-dynamic";
 function planFromCode(planCode?: string): BillingPlan {
   const code = planCode ?? "";
   if (code === process.env.PAYSTACK_PLAN_1Y) return "1year";
-  return "6month"; // default / fallback
+  return "6month";
 }
 
 function periodEndFromPlan(plan: BillingPlan): Date {
@@ -63,19 +62,51 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        const subscriptionCode = data.subscription_code ?? data.reference;
         const planCode = data.plan?.plan_code ?? data.plan_object?.plan_code;
         const plan = planFromCode(planCode);
         const periodEnd = periodEndFromPlan(plan);
 
-        await activateProSubscription({
-          userId,
-          provider: "paystack",
-          providerSubscriptionId: subscriptionCode,
-          providerCustomerId: data.customer?.customer_code ?? null,
-          currentPeriodEnd: periodEnd,
-          plan,
-        });
+        // Deduce if a previous record was created by reference or sub_code
+        const reference = data.reference;
+        const subCode = data.subscription_code;
+
+        // Check if an entry already exists under either tracking key
+        const existing = await db
+          .select()
+          .from(subscriptions)
+          .where(
+            or(
+              eq(subscriptions.providerSubscriptionId, reference),
+              subCode
+                ? eq(subscriptions.providerSubscriptionId, subCode)
+                : undefined,
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0 && existing[0]) {
+          // Update the existing row and ensure it saves the official subscription code for future event handling
+          await db
+            .update(subscriptions)
+            .set({
+              status: "active",
+              providerSubscriptionId: subCode ?? reference, // prefer long-term sub code if available
+              providerCustomerId: data.customer?.customer_code ?? null,
+              currentPeriodEnd: periodEnd,
+              updatedAt: new Date(),
+            })
+            .where(eq(subscriptions.id, existing[0].id));
+        } else {
+          // No row existed yet, safe to build fresh
+          await activateProSubscription({
+            userId,
+            provider: "paystack",
+            providerSubscriptionId: subCode ?? reference,
+            providerCustomerId: data.customer?.customer_code ?? null,
+            currentPeriodEnd: periodEnd,
+            plan,
+          });
+        }
         break;
       }
 
