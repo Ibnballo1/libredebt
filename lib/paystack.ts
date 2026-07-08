@@ -56,7 +56,7 @@ export async function initializePaystackTransaction(params: {
 }): Promise<PaystackInitResult> {
   // 1. Calculate the exact amount in Kobo to satisfy Paystack validation
   const isSixMonth = params.planCode === PAYSTACK_PLAN_6M;
-  const amountInKobo = isSixMonth ? 300000 : 550000;
+  const amountInKobo = isSixMonth ? 300000 : 10000;
 
   // 2. Add a quick sanity check to make sure the server has the env values
   if (!params.planCode) {
