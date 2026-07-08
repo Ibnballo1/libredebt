@@ -156,7 +156,8 @@ export const startPaystackCheckoutAction = authAction
         email: userEmail,
         userId,
         planCode,
-        callbackUrl: `${APP_URL}/settings?tab=billing&status=success`,
+        // callbackUrl: `${APP_URL}/settings?tab=billing&status=success`,
+        callbackUrl: `${APP_URL}/api/paystack-callback`,
       });
       return { success: true as const, redirectUrl: result.authorization_url };
     } catch (error) {
