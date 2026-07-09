@@ -35,6 +35,14 @@ export type PaystackVerifyResult = {
     name: string;
     plan_code: string;
   } | null;
+  metadata?: {
+    userId?: string;
+    custom_fields?: Array<{
+      display_name: string;
+      variable_name: string;
+      value: string | number;
+    }>;
+  } | null;
 };
 
 interface PaystackResponse<T> {

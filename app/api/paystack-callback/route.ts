@@ -5,6 +5,30 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Robust extraction utility to ensure the build stays completely type-safe
+ */
+function extractUserId(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const meta = metadata as Record<string, unknown>;
+
+  const userId = meta.userId;
+  if (typeof userId === "string" && userId) return userId;
+
+  const customFields = meta.custom_fields;
+  if (Array.isArray(customFields)) {
+    const field = customFields.find((f) => {
+      if (!f || typeof f !== "object") return false;
+      const ff = f as Record<string, unknown>;
+      return ff.variable_name === "userId" || ff.display_name === "userId";
+    }) as Record<string, unknown> | undefined;
+
+    if (field && field.value != null) return String(field.value);
+  }
+
+  return undefined;
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const reference = url.searchParams.get("reference");
@@ -19,14 +43,18 @@ export async function GET(request: NextRequest) {
     const transaction = await verifyPaystackTransaction(reference);
 
     if (transaction.status === "success") {
-      const userId = transaction.metadata?.userId;
+      // ◄◄◄ FIXED: Safely extracting the user ID across formats using our helper
+      const userId = extractUserId(transaction.metadata);
 
       if (userId) {
-        // DYNAMIC PLAN SELECTION: Use transaction data to determine duration
+        // Handle plan structural parsing variations cleanly
+        const planCode =
+          typeof transaction.plan === "string"
+            ? transaction.plan
+            : (transaction.plan_object?.plan_code ?? "");
+
         const planType =
-          transaction.plan === process.env.PAYSTACK_PLAN_1Y
-            ? "1year"
-            : "6month";
+          planCode === process.env.PAYSTACK_PLAN_1Y ? "1year" : "6month";
 
         await activateProSubscription({
           userId,
