@@ -81,6 +81,7 @@ export async function initializePaystackTransaction(params: {
   email: string;
   userId: string;
   planCode: string;
+  amount: number;
   callbackUrl: string;
 }): Promise<PaystackInitResult> {
   const result = await paystackFetch<PaystackInitResult>(
@@ -90,6 +91,7 @@ export async function initializePaystackTransaction(params: {
       body: JSON.stringify({
         email: params.email,
         plan: params.planCode,
+        amount: params.amount,
         callback_url: params.callbackUrl,
         metadata: {
           userId: params.userId,
