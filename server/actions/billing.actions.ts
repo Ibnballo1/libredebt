@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 
 // ── Base Pricing Configuration (Change these to match your actual pricing) ───
 const PRICE_6MONTH_BASE = 3000; // e.g., ₦3,000 or $30
-const PRICE_1YEAR_BASE = 100; // e.g., ₦5,500 or $55
+const PRICE_1YEAR_BASE = 5500; // e.g., ₦5,500 or $55
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();

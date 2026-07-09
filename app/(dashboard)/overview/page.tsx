@@ -49,7 +49,7 @@ export default async function OverviewPage() {
               className="inline-flex items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
             >
               <Plus className="h-3 w-3" />
-              <span className="hidden md:block">Add Debt</span>
+              Add Debt
             </Link>
           ) : null
         }
@@ -72,7 +72,7 @@ export default async function OverviewPage() {
                 <p className="text-[10px] font-bold tracking-widest uppercase text-[#94A3B8] mb-3">
                   Your debt summary
                 </p>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:grid-cols-4">
                   <StatCard
                     label="Total Debt"
                     value={formatCurrency(stats.totalOriginalMinor, {
