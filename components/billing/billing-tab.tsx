@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
-import { Check, Sparkles, Clock, Zap } from "lucide-react";
+import { Check, Sparkles, Clock } from "lucide-react";
 import {
   startPaystackCheckoutAction,
   cancelSubscriptionAction,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, cn } from "@/lib/utils";
 
-// Explicit types for better safety
 type PlanKey = "6month" | "1year";
 
 type BillingTabProps = {
@@ -103,7 +102,7 @@ export function BillingTab({
 
   if (tier === "pro") {
     return (
-      <div className="space-y-5">
+      <div className="space-y-6">
         <div className="rounded-xl border border-[#10B981]/20 bg-[#10B981]/5 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
@@ -143,6 +142,24 @@ export function BillingTab({
               )}
             </p>
           )}
+        </div>
+
+        {/* Features Inclusion List for Pro State */}
+        <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+            Your Premium Superpowers
+          </p>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {PRO_FEATURES.map((feature) => (
+              <li
+                key={feature}
+                className="flex items-start gap-2 text-sm text-[#334155]"
+              >
+                <Check className="h-4 w-4 text-[#10B981] shrink-0 mt-0.5" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {subscription?.status !== "canceled" && (
@@ -188,7 +205,7 @@ export function BillingTab({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {isInTrial && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <Clock className="h-4 w-4 text-amber-500" />
@@ -226,10 +243,30 @@ export function BillingTab({
         ))}
       </div>
 
+      {/* Features Inclusion List for Free/Checkout State */}
+      <div className="rounded-xl border border-[#E2E8F0] p-5 space-y-3 bg-white">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#475569]">
+          Unlock everything in LibreDebt Pro:
+        </p>
+        <ul className="space-y-2.5">
+          {PRO_FEATURES.map((feature) => (
+            <li
+              key={feature}
+              className="flex items-center gap-2.5 text-sm text-[#475569]"
+            >
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[#10B981]/10 shrink-0">
+                <Check className="h-3 w-3 text-[#10B981]" />
+              </div>
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <button
         onClick={() => startCheckout({ plan: selectedPlan })}
         disabled={isCheckingOut}
-        className="w-full rounded-lg bg-[#10B981] px-4 py-3.5 text-sm font-semibold text-white hover:bg-[#059669] disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full rounded-lg bg-[#10B981] px-4 py-3.5 text-sm font-semibold text-white hover:bg-[#059669] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
       >
         {isCheckingOut
           ? "Redirecting to Paystack…"
