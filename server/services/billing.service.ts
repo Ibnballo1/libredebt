@@ -15,7 +15,8 @@
 import { db } from "@/db";
 import { users, subscriptions } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { nanoid } from "nanoid";
+// import { crypto } from "crypto"; // Native Node utility or use your schema default
+import { randomUUID } from "crypto"; // Native Node standard
 
 export type BillingPlan = "6month" | "1year";
 export type BillingProvider = "paystack";
@@ -81,7 +82,7 @@ export async function activateProSubscription(params: {
         .where(eq(subscriptions.id, existing[0]!.id));
     } else {
       await tx.insert(subscriptions).values({
-        id: nanoid(),
+        id: crypto.randomUUID(),
         userId: params.userId,
         plan: "pro",
         planType: params.plan, // New column added here
