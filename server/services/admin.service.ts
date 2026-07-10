@@ -1,34 +1,10 @@
 /**
- * server/services/admin.service.ts
- *
- * System-wide read-only queries for the superadmin dashboard.
- *
- * EVERY function here is read-only. There are deliberately no
- * mutation functions (no "ban user", "delete user", "refund payment")
- * in this initial version — admin actions that change state need their
- * own audit-logged path, which we're explicitly deferring. For now,
- * this is observability only: see everything, change nothing.
- *
- * These queries intentionally bypass the per-user scoping that every
- * other repository/service in the app enforces — that's the entire
- * point of an admin view. This file should NEVER be imported by
- * anything other than admin pages/actions, all of which are gated by
- * requireSuperAdmin().
- *
- * NOTE ON BALANCE QUERIES: every balance computation here uses a plain
- * GROUP BY + sum() aggregate, never a correlated subquery via sql``
- * template column references — that pattern silently returned 0 for
- * every debt back in Step 6 because Drizzle's sql template binds
- * column references as parameters in correlated subqueries instead of
- * resolving them as SQL identifiers. See debt.repository.ts's fixed
- * version for the full explanation. The same fix applies here.
+ * server/services/admin.service.ts — OPTIMIZED
  */
 
 import { db } from "@/db";
 import { users, debts, ledgerEntries, subscriptions } from "@/db/schema";
 import { eq, and, count, sum, sql, inArray, desc, gte } from "drizzle-orm";
-
-// ─── System overview ──────────────────────────────────────────────────────────
 
 export type SystemOverview = {
   totalUsers: number;
@@ -59,6 +35,7 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     newUsers7,
     newUsers30,
     activeProSubs,
+    outstandingSum, // ◄◄◄ NEW: Blazing fast single aggregate query
   ] = await Promise.all([
     db
       .select({
@@ -100,43 +77,45 @@ export async function getSystemOverview(): Promise<SystemOverview> {
       .select({ value: count() })
       .from(users)
       .where(gte(users.createdAt, sevenDaysAgo)),
+
     db
       .select({ value: count() })
       .from(users)
       .where(gte(users.createdAt, thirtyDaysAgo)),
+
     db
       .select({ value: count() })
       .from(subscriptions)
       .where(eq(subscriptions.status, "active")),
+
+    // ◄◄◄ EXPLICIT FIX: Compute system outstanding sum natively inside SQL.
+    // This aggregates millions of lines down to 1 row before sending across the network.
+    db
+      .select({
+        totalOutstanding:
+          sql<number>`COALESCE(SUM(${ledgerEntries.amountMinor}), 0)`.mapWith(
+            Number,
+          ),
+      })
+      .from(ledgerEntries)
+      .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
+      .where(eq(debts.status, "active")),
   ]);
 
-  // Current outstanding balance across all active debts — plain GROUP BY,
-  // no correlated subquery.
-  const balanceRows = await db
-    .select({
-      debtId: ledgerEntries.debtId,
-      balance: sum(ledgerEntries.amountMinor),
-    })
-    .from(ledgerEntries)
-    .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
-    .where(eq(debts.status, "active"))
-    .groupBy(ledgerEntries.debtId);
+  const totalOriginalDebtMinor = Number(debtSums[0]?.totalOriginal ?? 0);
 
-  const totalCurrentOutstandingMinor = balanceRows.reduce(
-    (acc, row) => acc + Math.max(0, Number(row.balance ?? 0)),
+  // Safely grab the single value returned from our native database sum query
+  const totalCurrentOutstandingMinor = Math.max(
     0,
+    outstandingSum[0]?.totalOutstanding ?? 0,
   );
 
-  const totalOriginalDebtMinor = Number(debtSums[0]?.totalOriginal ?? 0);
   const totalAmountRepaidMinor = Math.max(
     0,
     totalOriginalDebtMinor - totalCurrentOutstandingMinor,
   );
 
-  // Directional MRR estimate: active pro subs × flat price.
-  // A production version would sum real per-subscription amounts from
-  // provider data once that's tracked; this is a placeholder estimate.
-  const FLAT_PRO_PRICE_NGN_MINOR = 250_000; // ₦2,500
+  const FLAT_PRO_PRICE_NGN_MINOR = 550_000; // Updated to match your actual ₦5,500 1-Year plan tier subunit
   const mrrEstimateMinor =
     (activeProSubs[0]?.value ?? 0) * FLAT_PRO_PRICE_NGN_MINOR;
 
@@ -248,12 +227,7 @@ export async function searchUsers(
   const debtCountRows = await db
     .select({ userId: debts.userId, activeCount: count() })
     .from(debts)
-    .where(
-      and(
-        eq(debts.status, "active"),
-        inArray(debts.userId, userIds), // 👈 Replaced raw SQL filter
-      ),
-    )
+    .where(and(eq(debts.status, "active"), inArray(debts.userId, userIds)))
     .groupBy(debts.userId);
 
   const debtCountMap = new Map(
@@ -268,10 +242,7 @@ export async function searchUsers(
     .from(ledgerEntries)
     .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
     .where(
-      and(
-        eq(debts.status, "active"),
-        inArray(ledgerEntries.userId, userIds), // 👈 Replaced raw SQL filter
-      ),
+      and(eq(debts.status, "active"), inArray(ledgerEntries.userId, userIds)),
     )
     .groupBy(ledgerEntries.userId);
 
