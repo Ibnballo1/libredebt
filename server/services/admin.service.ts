@@ -25,6 +25,7 @@ import {
   gte,
   lte,
   isNotNull,
+  inArray,
 } from "drizzle-orm";
 
 // ─── System overview ──────────────────────────────────────────────────────────
@@ -189,6 +190,8 @@ export type AdminUserListItem = {
   createdAt: Date;
 };
 
+// Make sure inArray is imported
+
 export async function searchUsers(
   query: string,
   limit = 50,
@@ -220,6 +223,8 @@ export async function searchUsers(
         .orderBy(desc(users.createdAt))
         .limit(limit);
 
+  // You already have the perfect guard here!
+  // Because we handle empty lists early, native inArray() is completely safe to use.
   if (userRows.length === 0) return [];
   const userIds = userRows.map((u) => u.id);
 
@@ -228,7 +233,10 @@ export async function searchUsers(
       .select({ userId: debts.userId, activeCount: count() })
       .from(debts)
       .where(
-        and(eq(debts.status, "active"), sql`${debts.userId} = ANY(${userIds})`),
+        and(
+          eq(debts.status, "active"),
+          inArray(debts.userId, userIds), // ◄ Swap sql`= ANY()` for native inArray
+        ),
       )
       .groupBy(debts.userId),
     db
@@ -241,7 +249,7 @@ export async function searchUsers(
       .where(
         and(
           eq(debts.status, "active"),
-          sql`${ledgerEntries.userId} = ANY(${userIds})`,
+          inArray(ledgerEntries.userId, userIds), // ◄ Swap here too
         ),
       )
       .groupBy(ledgerEntries.userId),
