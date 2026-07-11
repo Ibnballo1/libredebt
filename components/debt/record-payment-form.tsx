@@ -55,7 +55,7 @@ export function RecordPaymentForm({
       effectiveDate: today,
       amount: "",
       note: "",
-      receiptUrl: "", // ◄ Explicitly set default value
+      receiptUrl: undefined,
     },
   });
 
@@ -74,7 +74,7 @@ export function RecordPaymentForm({
             effectiveDate: today,
             amount: "",
             note: "",
-            receiptUrl: "",
+            receiptUrl: undefined,
           });
           setUploadedFileName(null);
           setServerError(null);
@@ -129,7 +129,10 @@ export function RecordPaymentForm({
         throw new Error("Cloudflare R2 validation rejected data transmission.");
 
       // 3. Inject returned URL directly back into reactive form engine state
-      setValue("receiptUrl", publicUrl);
+      setValue("receiptUrl", publicUrl, {
+        shouldValidate: true, // ◄ Forces Zod to re-check the new URL instantly
+        shouldDirty: true,
+      });
       setUploadedFileName(file.name);
       toast.success("Receipt verified and staged successfully.");
     } catch (err: unknown) {
@@ -156,16 +159,22 @@ export function RecordPaymentForm({
 
   return (
     <form
-      onSubmit={handleSubmit((data) => {
-        if (uploadingFile) {
-          toast.error("File upload in progress", {
-            description: "Please wait until image analysis finishes.",
-          });
-          return;
-        }
-        setServerError(null);
-        executeRecordPayment(data);
-      })}
+      onSubmit={handleSubmit(
+        (data) => {
+          if (uploadingFile) {
+            toast.error("File upload in progress", {
+              description: "Please wait until image analysis finishes.",
+            });
+            return;
+          }
+          setServerError(null);
+          executeRecordPayment(data);
+        },
+        (errors) => {
+          console.log("Validation Blocks:", errors);
+          setServerError("Please correct the highlighted fields.");
+        },
+      )}
       className="space-y-4"
       noValidate
     >
@@ -211,6 +220,8 @@ export function RecordPaymentForm({
             )}
           />
           {watchedAmount &&
+            typeof watchedAmount === "string" &&
+            watchedAmount.trim() !== "" &&
             !isNaN(parseFloat(watchedAmount)) &&
             parseFloat(watchedAmount) > 0 && (
               <p className="mt-1 text-xs font-semibold text-[#10B981]">

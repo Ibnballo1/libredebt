@@ -219,11 +219,7 @@ export const recordPaymentSchema = z.object({
    * * Receipt URL (optional) — if the user uploads a receipt image, the service layer
    * will store it in S3 and return the URL, which is then saved here.
    */
-  receiptUrl: z
-    .string()
-    .url("Invalid receipt link format")
-    .optional()
-    .or(z.literal("")),
+  receiptUrl: z.string().optional().or(z.literal("")),
 });
 
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
