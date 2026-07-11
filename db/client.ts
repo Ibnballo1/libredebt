@@ -20,7 +20,7 @@ export const queryClient =
   postgres(databaseUrl, {
     prepare: false, // MANDATORY for Supabase PgBouncer transaction pooling
     // Serverless production gets 1 connection per instance; local dev gets up to 10 for speed
-    max: process.env.NODE_ENV === "production" ? 1 : 10,
+    max: process.env.NODE_ENV === "production" ? 3 : 10,
   });
 
 if (process.env.NODE_ENV !== "production") {

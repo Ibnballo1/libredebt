@@ -1,5 +1,5 @@
 /**
- * server/services/admin.service.ts — ENHANCED
+ * server/services/admin.service.ts — ENHANCED & OPTIMIZED FOR max: 1
  *
  * Full replacement. Adds on top of original:
  *   getBusinessMetrics()     — avg debts/user, churn risk, receivables stats
@@ -10,6 +10,9 @@
  *
  * All original functions (getSystemOverview, getSignupGrowth,
  * searchUsers, getAdminUserDetail, getAdminUserLedger) are preserved.
+ *
+ * searchUsers has been refactored to use sequential queries (Option A)
+ * to safely handle limited connection pooling in production serverless environments.
  */
 
 import { db } from "@/db";
@@ -190,8 +193,6 @@ export type AdminUserListItem = {
   createdAt: Date;
 };
 
-// Make sure inArray is imported
-
 export async function searchUsers(
   query: string,
   limit = 50,
@@ -223,37 +224,31 @@ export async function searchUsers(
         .orderBy(desc(users.createdAt))
         .limit(limit);
 
-  // You already have the perfect guard here!
-  // Because we handle empty lists early, native inArray() is completely safe to use.
   if (userRows.length === 0) return [];
   const userIds = userRows.map((u) => u.id);
 
-  const [debtCountRows, balanceRows] = await Promise.all([
-    db
-      .select({ userId: debts.userId, activeCount: count() })
-      .from(debts)
-      .where(
-        and(
-          eq(debts.status, "active"),
-          inArray(debts.userId, userIds), // ◄ Swap sql`= ANY()` for native inArray
-        ),
-      )
-      .groupBy(debts.userId),
-    db
-      .select({
-        userId: ledgerEntries.userId,
-        balance: sum(ledgerEntries.amountMinor),
-      })
-      .from(ledgerEntries)
-      .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
-      .where(
-        and(
-          eq(debts.status, "active"),
-          inArray(ledgerEntries.userId, userIds), // ◄ Swap here too
-        ),
-      )
-      .groupBy(ledgerEntries.userId),
-  ]);
+  // ─── FIXED: OPTION A SEQUENTIAL QUERIES ───
+  // Unrolling Promise.all prevents single-connection connection pools from deadlocking.
+
+  // 1. Get active debt counts sequentially
+  const debtCountRows = await db
+    .select({ userId: debts.userId, activeCount: count() })
+    .from(debts)
+    .where(and(eq(debts.status, "active"), inArray(debts.userId, userIds)))
+    .groupBy(debts.userId);
+
+  // 2. Get active ledger balances sequentially over the released pool slot
+  const balanceRows = await db
+    .select({
+      userId: ledgerEntries.userId,
+      balance: sum(ledgerEntries.amountMinor),
+    })
+    .from(ledgerEntries)
+    .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
+    .where(
+      and(eq(debts.status, "active"), inArray(ledgerEntries.userId, userIds)),
+    )
+    .groupBy(ledgerEntries.userId);
 
   const debtCountMap = new Map(
     debtCountRows.map((r) => [r.userId, r.activeCount]),
