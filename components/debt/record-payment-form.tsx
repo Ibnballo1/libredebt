@@ -132,8 +132,10 @@ export function RecordPaymentForm({
       setValue("receiptUrl", publicUrl);
       setUploadedFileName(file.name);
       toast.success("Receipt verified and staged successfully.");
-    } catch (err: Error) {
-      setServerError(err?.message || "Failed uploading asset securely.");
+    } catch (err: unknown) {
+      setServerError(
+        err instanceof Error ? err.message : "Failed uploading asset securely.",
+      );
       if (fileInputRef.current) fileInputRef.current.value = "";
     } finally {
       setUploadingFile(false);
