@@ -40,6 +40,8 @@ export const ledgerEntries = pgTable(
 
     note: text("note"),
 
+    receiptUrl: text("receipt_url"),
+
     effectiveDate: timestamp("effective_date", { withTimezone: true })
       .notNull()
       .defaultNow(),

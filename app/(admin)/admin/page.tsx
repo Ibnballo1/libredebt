@@ -1,28 +1,50 @@
 /**
- * app/(admin)/admin/page.tsx — Admin Overview
+ * app/(admin)/admin/page.tsx — Admin Overview (ENHANCED)
  *
- * requireSuperAdmin() already ran in the parent layout — not repeated
- * here, the same way (dashboard) pages trust their layout's
- * requireSession() call.
+ * Replaces the original single-section overview with the full set:
+ *   1. Top-line metrics (users, pro, MRR, signups)
+ *   2. Debt portfolio metrics
+ *   3. Business metrics (churn risk, receivables, avg debts)
+ *   4. Engagement metrics (active vs ghost, velocity)
+ *   5. Strategy distribution
+ *   6. System health (DB row count, currency breakdown)
+ *   7. Signup growth chart (30d)
+ *   8. Webhook / payment event log
  */
 
 import type { Metadata } from "next";
 import {
   getSystemOverview,
   getSignupGrowth,
+  getBusinessMetrics,
+  getEngagementMetrics,
+  getStrategyDistribution,
+  getSystemHealth,
+  getWebhookEventLog,
 } from "@/server/services/admin.service";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
+import { AdminMetricSection } from "@/components/admin/admin-metric-section";
 import { SignupGrowthChart } from "@/components/admin/signup-growth-chart";
+import { BusinessMetricsPanel } from "@/components/admin/business-metrics";
+import { EngagementMetricsPanel } from "@/components/admin/engagement-metrics";
+import { StrategyDistributionPanel } from "@/components/admin/strategy-distribution";
+import { SystemHealthPanel } from "@/components/admin/system-health";
+import { WebhookEventLog } from "@/components/admin/webhook-event-log";
 import { formatCurrency } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin Overview" };
 
 export default async function AdminOverviewPage() {
-  const [overview, growth] = await Promise.all([
-    getSystemOverview(),
-    getSignupGrowth(30),
-  ]);
+  const [overview, growth, business, engagement, strategy, health, webhookLog] =
+    await Promise.all([
+      getSystemOverview(),
+      getSignupGrowth(30),
+      getBusinessMetrics(),
+      getEngagementMetrics(),
+      getStrategyDistribution(),
+      getSystemHealth(),
+      getWebhookEventLog(20),
+    ]);
 
   const conversionRate =
     overview.totalUsers > 0
@@ -30,21 +52,16 @@ export default async function AdminOverviewPage() {
       : "0.0";
 
   return (
-    // Removed strict desktop-bound padding ('p-8') and max-width.
-    // The AdminShell wrapper now handles structural content spacing fluidly.
-    <div className="space-y-8">
+    <div className="p-8 max-w-6xl space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-white md:text-2xl">
-          System Overview
-        </h1>
-        <p className="text-xs text-[#64748B] mt-1 md:text-sm">
-          Read-only — observability across all users and accounts
+        <h1 className="text-xl font-bold text-white">System Overview</h1>
+        <p className="text-sm text-[#64748B] mt-1">
+          Read-only observability across all users and accounts
         </p>
       </div>
 
-      {/* Group 1 Metrics Card Block */}
-      {/* Handled reflow natively: grid-cols-1 on mobile, grid-cols-2 on small devices (sm:), grid-cols-4 on desktops (lg:) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 1. Top-line: Users & Revenue */}
+      <AdminMetricSection label="Users & Revenue">
         <AdminStatCard
           label="Total users"
           value={overview.totalUsers.toLocaleString()}
@@ -70,10 +87,10 @@ export default async function AdminOverviewPage() {
           value={overview.newUsersLast30Days.toLocaleString()}
           sub={`${overview.newUsersLast7Days} in last 7 days`}
         />
-      </div>
+      </AdminMetricSection>
 
-      {/* Group 2 Financial Indicators Block */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 2. Debt portfolio */}
+      <AdminMetricSection label="Debt Portfolio">
         <AdminStatCard
           label="Active debts"
           value={overview.totalActiveDebts.toLocaleString()}
@@ -104,12 +121,35 @@ export default async function AdminOverviewPage() {
           sub={`${overview.totalPaymentsRecorded.toLocaleString()} payments recorded`}
           accent="emerald"
         />
+      </AdminMetricSection>
+
+      {/* 3. Business metrics */}
+      <BusinessMetricsPanel metrics={business} />
+
+      {/* 4. Engagement metrics */}
+      <EngagementMetricsPanel metrics={engagement} />
+
+      {/* 5. Strategy distribution */}
+      <div className="space-y-3">
+        <p className="text-[9px] font-bold tracking-widest uppercase text-[#475569]">
+          Strategy Adoption
+        </p>
+        <StrategyDistributionPanel data={strategy} />
       </div>
 
-      {/* Overflow wrapper protects the chart container block from container blowouts on mobile screens */}
-      <div className="w-full overflow-x-auto rounded-xl border border-[#1E2530] bg-[#0E131F] p-1">
-        <SignupGrowthChart data={growth} />
+      {/* 6. Signup growth chart */}
+      <SignupGrowthChart data={growth} />
+
+      {/* 7. System health */}
+      <div className="space-y-3">
+        <p className="text-[9px] font-bold tracking-widest uppercase text-[#475569]">
+          System Health
+        </p>
+        <SystemHealthPanel health={health} />
       </div>
+
+      {/* 8. Webhook / payment event log */}
+      <WebhookEventLog events={webhookLog} />
     </div>
   );
 }

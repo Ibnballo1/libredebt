@@ -1,6 +1,15 @@
-/** * server/services/admin.service.ts — ENHANCED & FULLY OPTIMIZED
- * * System-wide read-only queries for the superadmin dashboard.
- * Observability only — optimized to completely eliminate Cloudflare 524 timeouts.
+/**
+ * server/services/admin.service.ts — ENHANCED
+ *
+ * Full replacement. Adds on top of original:
+ *   getBusinessMetrics()     — avg debts/user, churn risk, receivables stats
+ *   getEngagementMetrics()   — active vs ghost users, velocity today/week
+ *   getStrategyDistribution() — users with active strategy vs none
+ *   getSystemHealth()        — ledger row count, currency breakdown
+ *   getWebhookEventLog()     — recent Paystack subscription events
+ *
+ * All original functions (getSystemOverview, getSignupGrowth,
+ * searchUsers, getAdminUserDetail, getAdminUserLedger) are preserved.
  */
 
 import { db } from "@/db";
@@ -16,10 +25,9 @@ import {
   gte,
   lte,
   isNotNull,
-  inArray,
 } from "drizzle-orm";
 
-// ─── OPTIMIZED: System overview ────────────────────────────────────────────────
+// ─── System overview ──────────────────────────────────────────────────────────
 
 export type SystemOverview = {
   totalUsers: number;
@@ -50,7 +58,6 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     newUsers7,
     newUsers30,
     activeProSubs,
-    outstandingSum, // ◄ Native database aggregation fix
   ] = await Promise.all([
     db
       .select({
@@ -60,7 +67,6 @@ export async function getSystemOverview(): Promise<SystemOverview> {
         ),
       })
       .from(users),
-
     db
       .select({
         active:
@@ -73,12 +79,10 @@ export async function getSystemOverview(): Promise<SystemOverview> {
           ),
       })
       .from(debts),
-
     db
       .select({ totalOriginal: sum(debts.originalAmountMinor) })
       .from(debts)
       .where(eq(debts.status, "active")),
-
     db
       .select({
         paymentCount:
@@ -87,7 +91,6 @@ export async function getSystemOverview(): Promise<SystemOverview> {
           ),
       })
       .from(ledgerEntries),
-
     db
       .select({ value: count() })
       .from(users)
@@ -100,34 +103,24 @@ export async function getSystemOverview(): Promise<SystemOverview> {
       .select({ value: count() })
       .from(subscriptions)
       .where(eq(subscriptions.status, "active")),
-
-    // Compute total system outstanding natively
-    db
-      .select({
-        totalOutstanding:
-          sql<number>`COALESCE(SUM(${ledgerEntries.amountMinor}), 0)`.mapWith(
-            Number,
-          ),
-      })
-      .from(ledgerEntries)
-      .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
-      .where(eq(debts.status, "active")),
   ]);
 
-  const totalOriginalDebtMinor = Number(debtSums[0]?.totalOriginal ?? 0);
-  const totalCurrentOutstandingMinor = Math.max(
-    0,
-    outstandingSum[0]?.totalOutstanding ?? 0,
-  );
-  const totalAmountRepaidMinor = Math.max(
-    0,
-    totalOriginalDebtMinor - totalCurrentOutstandingMinor,
-  );
+  const balanceRows = await db
+    .select({
+      debtId: ledgerEntries.debtId,
+      balance: sum(ledgerEntries.amountMinor),
+    })
+    .from(ledgerEntries)
+    .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
+    .where(eq(debts.status, "active"))
+    .groupBy(ledgerEntries.debtId);
 
-  // Adjusted to match your actual 1-Year Pro subscription tier code baseline
-  const FLAT_PRO_PRICE_NGN_MINOR = 550_000;
-  const mrrEstimateMinor =
-    (activeProSubs[0]?.value ?? 0) * FLAT_PRO_PRICE_NGN_MINOR;
+  const totalCurrentOutstandingMinor = balanceRows.reduce(
+    (acc, r) => acc + Math.max(0, Number(r.balance ?? 0)),
+    0,
+  );
+  const totalOriginalDebtMinor = Number(debtSums[0]?.totalOriginal ?? 0);
+  const FLAT_PRO_PRICE_NGN_MINOR = 250_000;
 
   return {
     totalUsers: userCounts[0]?.total ?? 0,
@@ -138,14 +131,17 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     totalOriginalDebtMinor,
     totalCurrentOutstandingMinor,
     totalPaymentsRecorded: ledgerCounts[0]?.paymentCount ?? 0,
-    totalAmountRepaidMinor,
+    totalAmountRepaidMinor: Math.max(
+      0,
+      totalOriginalDebtMinor - totalCurrentOutstandingMinor,
+    ),
     newUsersLast7Days: newUsers7[0]?.value ?? 0,
     newUsersLast30Days: newUsers30[0]?.value ?? 0,
-    mrrEstimateMinor,
+    mrrEstimateMinor: (activeProSubs[0]?.value ?? 0) * FLAT_PRO_PRICE_NGN_MINOR,
   };
 }
 
-// ─── OPTIMIZED: Signup growth chart ───────────────────────────────────────────
+// ─── Signup growth chart ──────────────────────────────────────────────────────
 
 export type SignupGrowthPoint = { dateLabel: string; count: number };
 
@@ -155,44 +151,33 @@ export async function getSignupGrowth(
   const since = new Date();
   since.setDate(since.getDate() - (daysBack - 1));
   since.setHours(0, 0, 0, 0);
-
-  // Group and count signups natively inside PostgreSQL
-  const dailyCounts = await db
-    .select({
-      dateStr: sql<string>`TO_CHAR(${users.createdAt}, 'YYYY-MM-DD')`,
-      dailyCount: sql<number>`COUNT(*)`,
-    })
+  const rows = await db
+    .select({ createdAt: users.createdAt })
     .from(users)
-    .where(gte(users.createdAt, since))
-    .groupBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM-DD')`);
-
-  const countMap = new Map<string, number>(
-    dailyCounts.map((row) => [row.dateStr, Number(row.dailyCount ?? 0)]),
-  );
-
+    .where(gte(users.createdAt, since));
   const points: SignupGrowthPoint[] = [];
   const cursor = new Date(since);
-
   for (let i = 0; i < daysBack; i++) {
-    const year = cursor.getFullYear();
-    const month = String(cursor.getMonth() + 1).padStart(2, "0");
-    const day = String(cursor.getDate()).padStart(2, "0");
-    const lookupKey = `${year}-${month}-${day}`;
-
     points.push({
       dateLabel: cursor.toLocaleDateString("en-NG", {
         month: "short",
         day: "numeric",
       }),
-      count: countMap.get(lookupKey) ?? 0,
+      count: 0,
     });
     cursor.setDate(cursor.getDate() + 1);
   }
-
+  for (const row of rows) {
+    const daysSince = Math.floor(
+      (new Date(row.createdAt).getTime() - since.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+    if (daysSince >= 0 && daysSince < daysBack) points[daysSince]!.count++;
+  }
   return points;
 }
 
-// ─── EXISTING: User list (searchable) ────────────────────────────────────────
+// ─── User list (searchable) ───────────────────────────────────────────────────
 
 export type AdminUserListItem = {
   id: string;
@@ -236,22 +221,16 @@ export async function searchUsers(
         .limit(limit);
 
   if (userRows.length === 0) return [];
-  // 1. Map out the user IDs
   const userIds = userRows.map((u) => u.id);
 
-  // 2. Fetch dependencies cleanly using inArray()
   const [debtCountRows, balanceRows] = await Promise.all([
     db
       .select({ userId: debts.userId, activeCount: count() })
       .from(debts)
       .where(
-        and(
-          eq(debts.status, "active"),
-          inArray(debts.userId, userIds), // ◄ Clean, native Drizzle alternative to ANY()
-        ),
+        and(eq(debts.status, "active"), sql`${debts.userId} = ANY(${userIds})`),
       )
       .groupBy(debts.userId),
-
     db
       .select({
         userId: ledgerEntries.userId,
@@ -262,7 +241,7 @@ export async function searchUsers(
       .where(
         and(
           eq(debts.status, "active"),
-          inArray(ledgerEntries.userId, userIds), // ◄ Clean, native Drizzle alternative to ANY()
+          sql`${ledgerEntries.userId} = ANY(${userIds})`,
         ),
       )
       .groupBy(ledgerEntries.userId),
@@ -286,7 +265,7 @@ export async function searchUsers(
   }));
 }
 
-// ─── EXISTING: Per-user detail ─────────────────────────────────────────────────
+// ─── Per-user detail ──────────────────────────────────────────────────────────
 
 export type AdminUserDetail = {
   id: string;
@@ -380,7 +359,7 @@ export async function getAdminUserLedger(userId: string, debtId: string) {
     .orderBy(desc(ledgerEntries.effectiveDate));
 }
 
-// ─── NEW & PERFORMANCE SAFE: Business metrics ─────────────────────────────────
+// ─── NEW: Business metrics ─────────────────────────────────────────────────────
 
 export type BusinessMetrics = {
   avgDebtsPerUser: number;
@@ -456,7 +435,7 @@ export async function getBusinessMetrics(): Promise<BusinessMetrics> {
   };
 }
 
-// ─── NEW & PERFORMANCE SAFE: Engagement metrics ───────────────────────────────
+// ─── NEW: Engagement metrics ───────────────────────────────────────────────────
 
 export type EngagementMetrics = {
   activeUsersLast30Days: number;
@@ -464,8 +443,8 @@ export type EngagementMetrics = {
   ghostPercent: number;
   paymentsToday: number;
   paymentsThisWeek: number;
-  debtsAddedThisWeek: number;
   debtsAddedToday: number;
+  debtsAddedThisWeek: number;
 };
 
 export async function getEngagementMetrics(): Promise<EngagementMetrics> {
@@ -475,12 +454,12 @@ export async function getEngagementMetrics(): Promise<EngagementMetrics> {
     now.getMonth(),
     now.getDate(),
   );
-  const silverDates = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [
     totalUsersRes,
-    activeUsersRes, // ◄ Optimized aggregate count to prevent OOM errors
+    activeUserIds,
     paymentsToday,
     paymentsWeek,
     debtsToday,
@@ -488,7 +467,7 @@ export async function getEngagementMetrics(): Promise<EngagementMetrics> {
   ] = await Promise.all([
     db.select({ value: count() }).from(users),
     db
-      .select({ value: countDistinct(ledgerEntries.userId) })
+      .selectDistinct({ userId: ledgerEntries.userId })
       .from(ledgerEntries)
       .where(gte(ledgerEntries.createdAt, thirtyDaysAgo)),
     db
@@ -506,7 +485,7 @@ export async function getEngagementMetrics(): Promise<EngagementMetrics> {
       .where(
         and(
           eq(ledgerEntries.type, "payment"),
-          gte(ledgerEntries.createdAt, silverDates),
+          gte(ledgerEntries.createdAt, sevenDaysAgo),
         ),
       ),
     db
@@ -516,11 +495,11 @@ export async function getEngagementMetrics(): Promise<EngagementMetrics> {
     db
       .select({ value: count() })
       .from(debts)
-      .where(gte(debts.createdAt, silverDates)),
+      .where(gte(debts.createdAt, sevenDaysAgo)),
   ]);
 
   const totalUsers = totalUsersRes[0]?.value ?? 0;
-  const activeCount = activeUsersRes[0]?.value ?? 0;
+  const activeCount = activeUserIds.length;
   const ghostUsers = Math.max(0, totalUsers - activeCount);
 
   return {
@@ -535,7 +514,7 @@ export async function getEngagementMetrics(): Promise<EngagementMetrics> {
   };
 }
 
-// ─── NEW: Strategy distribution ───────────────────────────────────────────────
+// ─── NEW: Strategy distribution ────────────────────────────────────────────────
 
 export type StrategyDistribution = {
   snowballCount: number;
@@ -546,18 +525,17 @@ export type StrategyDistribution = {
 };
 
 export async function getStrategyDistribution(): Promise<StrategyDistribution> {
-  const [withStrategyRes, totalDebtsRes] = await Promise.all([
+  const [withStrategy, totalUsersRes] = await Promise.all([
     db
-      .select({ value: countDistinct(debts.userId) })
+      .selectDistinct({ userId: debts.userId })
       .from(debts)
       .where(and(eq(debts.status, "active"), isNotNull(debts.strategyOrder))),
     db.select({ value: count() }).from(users),
   ]);
 
-  const totalUsers = totalDebtsRes[0]?.value ?? 0;
-  const withStrategyCount = withStrategyRes[0]?.value ?? 0;
+  const totalUsers = totalUsersRes[0]?.value ?? 0;
+  const withStrategyCount = withStrategy.length;
   const noStrategyCount = Math.max(0, totalUsers - withStrategyCount);
-
   const snowballCount = Math.round(withStrategyCount * 0.5);
   const avalancheCount = withStrategyCount - snowballCount;
 
@@ -608,7 +586,7 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   };
 }
 
-// ─── NEW: Webhook / subscription event log ────────────────────────────────────
+// ─── NEW: Webhook event log ────────────────────────────────────────────────────
 
 export type WebhookEventLogItem = {
   id: string;
@@ -624,7 +602,7 @@ export type WebhookEventLogItem = {
 export async function getWebhookEventLog(
   limit = 20,
 ): Promise<WebhookEventLogItem[]> {
-  return db
+  const rows = await db
     .select({
       id: subscriptions.id,
       userId: subscriptions.userId,
@@ -639,9 +617,6 @@ export async function getWebhookEventLog(
     .innerJoin(users, eq(subscriptions.userId, users.id))
     .orderBy(desc(subscriptions.createdAt))
     .limit(limit);
-}
 
-// Helper utility for count distinct metric handling
-function countDistinct(column: unknown) {
-  return sql<number>`COUNT(DISTINCT ${column})`.mapWith(Number);
+  return rows;
 }
