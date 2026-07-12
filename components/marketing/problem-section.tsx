@@ -62,7 +62,8 @@ export function ProblemSection() {
         {/* ─── Main Aggregator Grid Layout ──────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16 lg:items-start">
           {/* Left Column: Context Thesis Anchor */}
-          <div className="sticky top-24">
+          {/* FIX: Changed 'sticky' to 'lg:sticky' so it only locks in place on desktop */}
+          <div className="lg:sticky lg:top-24">
             <h2
               id="problem-heading"
               className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl leading-[1.15] dark:text-slate-50"
