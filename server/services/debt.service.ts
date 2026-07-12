@@ -111,6 +111,7 @@ export async function createDebt(
           amountMinor: originalAmountMinor, // positive: you owe this amount
           recordedBy: "system",
           note: `Opening balance for ${input.name}`,
+          receiptUrl: undefined,
           effectiveDate: new Date(),
         },
         tx,
@@ -272,6 +273,7 @@ export async function recordPayment(
       amountMinor: signedAmount,
       recordedBy: "user",
       note: input.note,
+      receiptUrl: input.receiptUrl,
       effectiveDate: new Date(input.effectiveDate),
     });
 

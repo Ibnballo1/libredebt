@@ -15,6 +15,13 @@
       "when": 1783552202610,
       "tag": "0001_spotty_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783749483100,
+      "tag": "0002_careless_vulcan",
+      "breakpoints": true
     }
   ]
 }

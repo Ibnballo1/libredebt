@@ -224,6 +224,7 @@ export async function insertLedgerEntry(
     amountMinor: number;
     recordedBy: "user" | "system";
     note: string | undefined;
+    receiptUrl?: string | undefined | null;
     effectiveDate: Date;
   },
   tx?: TxClient,

@@ -199,6 +199,7 @@ export type PaymentHistoryEntry = {
   note: string | null;
   effectiveDate: Date;
   type: "payment" | "opening" | "adjustment";
+  receiptUrl?: string | null;
 };
 
 export async function getPaymentHistory(
@@ -216,6 +217,7 @@ export async function getPaymentHistory(
       note: ledgerEntries.note,
       effectiveDate: ledgerEntries.effectiveDate,
       type: ledgerEntries.type,
+      receiptUrl: ledgerEntries.receiptUrl,
     })
     .from(ledgerEntries)
     .innerJoin(debts, eq(ledgerEntries.debtId, debts.id))
@@ -236,5 +238,6 @@ export async function getPaymentHistory(
     effectiveDate: r.effectiveDate,
     // query filters to payments only, so narrow the type here
     type: "payment",
+    receiptUrl: r.receiptUrl,
   }));
 }

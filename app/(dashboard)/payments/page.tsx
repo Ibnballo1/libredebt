@@ -117,6 +117,8 @@ export default async function PaymentsPage() {
                 <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
                   {entries.map((payment, index) => {
                     const absAmount = Math.abs(payment.amountMinor);
+                    // Safely check if a receipt exists on this ledger item record
+                    const hasReceipt = !!payment.receiptUrl;
 
                     return (
                       <Link
@@ -149,6 +151,14 @@ export default async function PaymentsPage() {
                             <span className="text-[10px] text-[#94A3B8]">
                               {payment.creditor}
                             </span>
+
+                            {/* Visual Receipt Label */}
+                            {hasReceipt && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 border border-slate-200">
+                                <Receipt className="h-2.5 w-2.5" />
+                                Receipt
+                              </span>
+                            )}
                           </div>
                           {payment.note && (
                             <p className="text-xs text-[#64748B] mt-0.5">

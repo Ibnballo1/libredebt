@@ -216,10 +216,13 @@ export const recordPaymentSchema = z.object({
     .transform((val) => (val?.trim() === "" ? undefined : val?.trim())),
 
   /**
-   * * Receipt URL (optional) — if the user uploads a receipt image, the service layer
-   * will store it in S3 and return the URL, which is then saved here.
+   * Optional public URL of an uploaded receipt (Cloudflare R2).
+   * Empty string treated as no receipt.
    */
-  receiptUrl: z.string().optional().or(z.literal("")),
+  receiptUrl: z
+    .string()
+    .optional()
+    .transform((val) => (val?.trim() === "" ? undefined : val?.trim())),
 });
 
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;

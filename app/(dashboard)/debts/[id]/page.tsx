@@ -13,7 +13,7 @@
  */
 
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Pencil, Archive } from "lucide-react";
 import { requireUser } from "@/lib/auth-session";
@@ -39,9 +39,7 @@ export async function generateMetadata({
 }: DebtDetailPageProps): Promise<Metadata> {
   const { id } = await params;
   const user = await requireUser();
-  if (!user) {
-    redirect("/login"); // ✅ ONLY place redirect happens
-  }
+  if (!user) return { title: "Debt not found" };
   const debt = await getDebtById(id, user.id);
   if (!debt) return { title: "Debt not found" };
   return { title: debt.name };
@@ -50,9 +48,7 @@ export async function generateMetadata({
 export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const { id } = await params;
   const user = await requireUser();
-  if (!user) {
-    redirect("/login"); // ✅ ONLY place redirect happens
-  }
+  if (!user) notFound();
   const tier = user.subscriptionTier as "free" | "pro";
 
   // Fetch debt — returns null if not found or not owned by user
@@ -261,7 +257,11 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
                   {entries.length === 1 ? "entry" : "entries"}
                 </p>
               </div>
-              <LedgerHistoryList entries={entries} currency={debt.currency} />
+              <LedgerHistoryList
+                entries={entries}
+                currency={debt.currency}
+                debtId={debt.id}
+              />
             </div>
           </div>
         </div>

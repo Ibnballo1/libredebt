@@ -1,0 +1,1 @@
+ALTER TABLE "ledger_entries" ADD COLUMN "receipt_url" text;
