@@ -32,6 +32,7 @@ import { SystemHealthPanel } from "@/components/admin/system-health";
 import { WebhookEventLog } from "@/components/admin/webhook-event-log";
 import { formatCurrency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin Overview" };
 
 export default async function AdminOverviewPage() {
