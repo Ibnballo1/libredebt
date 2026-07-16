@@ -153,6 +153,13 @@ export async function sendAnnouncementEmail({
       plainTextFallback = messageBody;
     }
 
+    // 1. Define your logo's absolute URL.
+    // Replace "https://your-production-domain.com" with your actual domain (e.g., libredebt.com)
+    // Or you can use your raw GitHub link if the site isn't fully set up yet.
+    const logoUrl = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/libredebt-logo.png`
+      : "https://raw.githubusercontent.com/Ibnballo1/libredebt/main/apps/libredebt-web/public/libredebt-logo.png";
+
     const { data, error } = await resend.emails.send({
       from: "LibreDebt Team <hello@libredebt.com>",
       to: [toEmail],
@@ -162,7 +169,7 @@ export async function sendAnnouncementEmail({
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px;">
           <div style="margin-bottom: 24px;">
-            <span style="font-size: 20px; font-weight: 800; color: #10b981; letter-spacing: -0.5px;">LibreDebt</span>
+            <img src="${logoUrl}" alt="LibreDebt Logo" style="height: 40px; width: auto;" />
           </div>
           <p style="font-size: 16px; line-height: 24px; color: #0f172a; margin-top: 0; margin-bottom: 20px;">
             Hello ${userName || "there"},
