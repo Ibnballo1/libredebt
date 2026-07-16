@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { RichTextEditor } from "@/components/rich-text-editor"; // Adjust path to match your alias settings
 
 type TargetGroup = "all" | "pro" | "free" | "no-debts" | "individual";
 
@@ -28,6 +29,16 @@ export default function AdminAnnouncementPage() {
     setIsLoading(true);
     setStatus(null);
 
+    // Safeguard to ensure our rich text editor has body content before sending
+    if (!content || content === "<p></p>") {
+      setStatus({
+        type: "error",
+        message: "Please write a message body before sending.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
@@ -40,7 +51,7 @@ export default function AdminAnnouncementPage() {
 
       setStatus({ type: "success", message: data.message });
       setTitle("");
-      setContent("");
+      setContent(""); // Resets rich editor's state
       setTargetEmail("");
     } catch (err: unknown) {
       setStatus({
@@ -145,17 +156,14 @@ export default function AdminAnnouncementPage() {
             />
           </div>
 
-          {/* Message Content */}
+          {/* Message Content with RichTextEditor integration */}
           <div className="space-y-2">
             <label className="text-sm font-semibold">Message Body</label>
-            <textarea
-              required
-              rows={8}
-              placeholder="Write your announcement details here. Feel free to use rich text structures..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-mono"
-            />
+            <RichTextEditor content={content} onChange={setContent} />
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Rich Text formatting is automatically converted to
+              production-ready HTML structure.
+            </p>
           </div>
 
           {/* Status Indicators */}
