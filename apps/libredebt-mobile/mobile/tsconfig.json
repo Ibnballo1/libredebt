@@ -1,0 +1,20 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true, // <-- Crucial! Tells TS not to type-check declaration (.d.ts) files in node_modules
+    "moduleResolution": "node",
+    "baseUrl": ".", // <-- This tells TS to resolve relative to apps/libredebt-mobile/mobile/
+    "paths": {
+      "@/*": ["./*"] // <-- This maps @/ to your mobile app folder (e.g., apps/libredebt-mobile/mobile/components)
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ]
+}
