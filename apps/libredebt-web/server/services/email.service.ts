@@ -126,23 +126,45 @@ export async function sendAnnouncementEmail({
   messageBody,
 }: SendAnnouncementEmailArgs) {
   try {
-    // Format line breaks safely for simple HTML layout
-    const htmlBody = messageBody
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br />");
+    // Check if the message is HTML (rich text editor output) or pure plain text
+    const isHtml = /<[a-z][\s\S]*>/i.test(messageBody);
+
+    let htmlBody = "";
+    let plainTextFallback = "";
+
+    if (isHtml) {
+      // It's already HTML from the rich text editor; use it directly!
+      htmlBody = messageBody;
+
+      // Clean up the raw HTML to produce a clean plain-text fallback for email clients
+      plainTextFallback = messageBody
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "") // Strip remaining HTML tags
+        .trim();
+    } else {
+      // Fallback for plain text: escape and format line breaks safely
+      htmlBody = messageBody
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br />");
+
+      plainTextFallback = messageBody;
+    }
 
     const { data, error } = await resend.emails.send({
       from: "LibreDebt Team <hello@libredebt.com>",
       to: [toEmail],
       subject: subject,
+      // Providing a clean text alternative makes sure clients that block HTML display it nicely
+      text: `Hello ${userName || "there"},\n\n${plainTextFallback}\n\n---\nThis is a system broadcast from LibreDebt.`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px;">
           <div style="margin-bottom: 24px;">
             <span style="font-size: 20px; font-weight: 800; color: #10b981; letter-spacing: -0.5px;">LibreDebt</span>
           </div>
-          <p style="font-size: 16px; line-height: 24px; color: #0f172a; margin-top: 0;">
+          <p style="font-size: 16px; line-height: 24px; color: #0f172a; margin-top: 0; margin-bottom: 20px;">
             Hello ${userName || "there"},
           </p>
           <div style="font-size: 15px; line-height: 26px; color: #334155;">

@@ -224,3 +224,40 @@ export function getInitials(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+export function htmlToPlainText(html: string): string {
+  if (!html) return "";
+
+  let text = html;
+
+  // 1. Replace paragraph and heading ends with double newlines
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+
+  // 2. Replace list items and line breaks with single newlines
+  text = text.replace(/<\/li>/gi, "\n");
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+
+  // 3. Remove images entirely
+  text = text.replace(/<img[^>]*>/gi, "");
+
+  // 4. Strip all remaining HTML tags (like <strong>, <a>, etc.)
+  // This keeps the text inside them, but drops the tag wrapper.
+  text = text.replace(/<[^>]+>/g, "");
+
+  // 5. Clean up excessive whitespace/newlines
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  // 6. Decode common HTML entities
+  const entities: Record<string, string> = {
+    "&nbsp;": " ",
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#39;": "'",
+  };
+  text = text.replace(/&[#\w\d]+;/g, (match) => entities[match] || match);
+
+  return text.trim();
+}
