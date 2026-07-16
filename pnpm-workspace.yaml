@@ -1,3 +1,3 @@
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+packages:
+  - "apps/libredebt-web"
+  - "apps/libredebt-mobile/mobile" # <-- Directs pnpm to the actual location of the mobile
