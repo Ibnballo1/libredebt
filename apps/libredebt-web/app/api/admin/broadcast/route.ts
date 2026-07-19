@@ -14,6 +14,8 @@ export async function POST(req: Request) {
     const ADMIN_EMAILS = [
       "ibnballo@gmail.com",
       "belloabdullateef035@gmail.com",
+      "aburaslaan81@gmail.com",
+      "webtekhy@gmail.com",
     ]; // Add other admin emails here
     if (!session || !ADMIN_EMAILS.includes(session.user.email)) {
       return NextResponse.json(

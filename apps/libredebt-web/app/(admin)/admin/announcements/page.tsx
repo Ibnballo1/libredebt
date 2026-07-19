@@ -27,22 +27,36 @@ export default function AdminAnnouncementPage() {
   const [registeredUsers, setRegisteredUsers] = useState<UserOption[]>([]);
   const [targetEmails, setTargetEmails] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
 
-  // Fetch your 52 registered users from the database when component mounts
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const res = await fetch("/api/admin/users"); // Make sure this endpoint returns [{ id, email, name }]
-        if (res.ok) {
-          const data = await res.json();
-          setRegisteredUsers(data);
+        setFetchError(null);
+        const res = await fetch("/api/admin/users");
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          setFetchError(
+            `Server returned status ${res.status}: ${errorText || "No error message provided"}`,
+          );
+          return;
         }
+
+        const data = await res.json();
+        console.log("Successfully fetched users:", data);
+        setRegisteredUsers(data);
       } catch (err) {
-        console.error("Failed to load user list options", err);
+        console.error("Fetch operation completely failed:", err);
+        setFetchError(
+          err instanceof Error
+            ? err.message
+            : "Network request failed entirely.",
+        );
       }
     }
     fetchUsers();
@@ -195,6 +209,11 @@ export default function AdminAnnouncementPage() {
                   </option>
                 ))}
               </select>
+              {fetchError && (
+                <div className="p-3 mb-4 rounded-xl text-xs font-mono bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400">
+                  <strong>⚠️ Dropdown Fetch Error:</strong> {fetchError}
+                </div>
+              )}
 
               {/* Recipient Chips Container */}
               {targetEmails.length > 0 && (
