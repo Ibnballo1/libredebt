@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, debts, announcements } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq, isNull, and } from "drizzle-orm";
+import { eq, isNull, inArray } from "drizzle-orm";
 // Assume you have an email service wrapper like Resend/Nodemailer configured
 import { sendAnnouncementEmail } from "@/server/services/email.service";
 
@@ -10,7 +10,6 @@ export async function POST(req: Request) {
   try {
     // 1. Authenticate and verify SuperAdmin privileges
     const session = await auth.api.getSession({ headers: req.headers });
-    // console.log("Logged-in Session:", session);
 
     const ADMIN_EMAILS = [
       "ibnballo@gmail.com",
@@ -22,18 +21,9 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
-    // if (
-    //   !session ||
-    //   !(session.user as { isSuperAdmin?: boolean }).isSuperAdmin
-    // ) {
-    //   return NextResponse.json(
-    //     { error: "Unauthorized access. Admins only." },
-    //     { status: 403 },
-    //   );
-    // }
 
-    const { title, content, targetGroup, targetEmail, targetName } =
-      await req.json();
+    // Capture targetEmails as an array from the frontend payload
+    const { title, content, targetGroup, targetEmails } = await req.json();
 
     if (!title || !content || !targetGroup) {
       return NextResponse.json(
@@ -42,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let targetUsers: { id: string; email: string; name: string }[] = [];
+    let targetUsers: { id: string; email: string; name: string | null }[] = [];
 
     // 2. Query target audience cohorts
     switch (targetGroup) {
@@ -76,19 +66,30 @@ export async function POST(req: Request) {
         break;
 
       case "individual":
-        if (!targetEmail) {
+        if (
+          !targetEmails ||
+          !Array.isArray(targetEmails) ||
+          targetEmails.length === 0
+        ) {
           return NextResponse.json(
             {
-              error: "Target email is required for individual messages.",
+              error:
+                "An array of target emails is required for individual messages.",
             },
             { status: 400 },
           );
         }
+
+        // Clean and process input list strings safely
+        const sanitizedEmails = targetEmails.map((e: string) =>
+          e.trim().toLowerCase(),
+        );
+
+        // Single efficient query hitting the target rows using 'inArray'
         targetUsers = await db
           .select({ id: users.id, email: users.email, name: users.name })
           .from(users)
-          .where(eq(users.email, targetEmail.trim().toLowerCase()))
-          .limit(1);
+          .where(inArray(users.email, sanitizedEmails));
         break;
 
       default:
@@ -111,16 +112,17 @@ export async function POST(req: Request) {
       title,
       content,
       targetGroup,
-      targetEmail: targetGroup === "individual" ? targetEmail : null,
+      // Save array as a scannable text string in your database column
+      targetEmail:
+        targetGroup === "individual" ? targetEmails.join(", ") : null,
       sentBy: session.user.id,
     });
 
-    // 4. Batch Dispatch Emails
-    // Using Promise.allSettled to ensure one failing email account doesn't crash the entire batch pipeline
+    // 4. Batch Dispatch Emails concurrently using Promise.allSettled
     const dispatchPromises = targetUsers.map((user) =>
       sendAnnouncementEmail({
         toEmail: user.email,
-        userName: user.name,
+        userName: user.name || "",
         subject: title,
         messageBody: content,
       }).catch((err: unknown) => {
@@ -134,7 +136,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       sentCount: targetUsers.length,
-      message: `Broadcast processed successfully to ${targetUsers.length} users.`,
+      message: `Broadcast processed successfully to ${targetUsers.length} user(s).`,
     });
   } catch (error) {
     console.error("[broadcast_api_error]", error);

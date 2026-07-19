@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   Mail,
@@ -8,21 +8,55 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  X,
 } from "lucide-react";
 import { RichTextEditor } from "@/components/rich-text-editor"; // Adjust path to match your alias settings
 
 type TargetGroup = "all" | "pro" | "free" | "no-debts" | "individual";
 
+interface UserOption {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
 export default function AdminAnnouncementPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [targetGroup, setTargetGroup] = useState<TargetGroup>("all");
-  const [targetEmail, setTargetEmail] = useState("");
+  const [registeredUsers, setRegisteredUsers] = useState<UserOption[]>([]);
+  const [targetEmails, setTargetEmails] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Fetch your 52 registered users from the database when component mounts
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        const res = await fetch("/api/admin/users"); // Make sure this endpoint returns [{ id, email, name }]
+        if (res.ok) {
+          const data = await res.json();
+          setRegisteredUsers(data);
+        }
+      } catch (err) {
+        console.error("Failed to load user list options", err);
+      }
+    }
+    fetchUsers();
+  }, []);
+
+  const handleSelectEmail = (email: string) => {
+    if (email && !targetEmails.includes(email)) {
+      setTargetEmails([...targetEmails, email]);
+    }
+  };
+
+  const handleRemoveEmail = (emailToRemove: string) => {
+    setTargetEmails(targetEmails.filter((email) => email !== emailToRemove));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,11 +73,25 @@ export default function AdminAnnouncementPage() {
       return;
     }
 
+    if (targetGroup === "individual" && targetEmails.length === 0) {
+      setStatus({
+        type: "error",
+        message: "Please select at least one individual recipient email.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, targetGroup, targetEmail }),
+        body: JSON.stringify({
+          title,
+          content,
+          targetGroup,
+          targetEmails: targetGroup === "individual" ? targetEmails : [],
+        }),
       });
       const data = await res.json();
 
@@ -52,7 +100,7 @@ export default function AdminAnnouncementPage() {
       setStatus({ type: "success", message: data.message });
       setTitle("");
       setContent(""); // Resets rich editor's state
-      setTargetEmail("");
+      setTargetEmails([]);
     } catch (err: unknown) {
       setStatus({
         type: "error",
@@ -124,20 +172,50 @@ export default function AdminAnnouncementPage() {
             </div>
           </div>
 
-          {/* Conditional Target Email Input */}
+          {/* New Multi-Select Dropdown Filter for Individual Email Selection */}
           {targetGroup === "individual" && (
-            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
               <label className="text-sm font-semibold">
-                User Email Address
+                Select Individual Recipients
               </label>
-              <input
-                type="email"
-                required
-                placeholder="user@example.com"
-                value={targetEmail}
-                onChange={(e) => setTargetEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              />
+              <select
+                onChange={(e) => {
+                  handleSelectEmail(e.target.value);
+                  e.target.value = ""; // Clear option state back to label
+                }}
+                defaultValue=""
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm appearance-none"
+              >
+                <option value="" disabled>
+                  -- Choose a registered user email --
+                </option>
+                {registeredUsers.map((user) => (
+                  <option key={user.id} value={user.email}>
+                    {user.name ? `${user.name} (${user.email})` : user.email}
+                  </option>
+                ))}
+              </select>
+
+              {/* Recipient Chips Container */}
+              {targetEmails.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-950/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                  {targetEmails.map((email) => (
+                    <div
+                      key={email}
+                      className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1 rounded-full text-xs font-medium transition-all"
+                    >
+                      <span>{email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEmail(email)}
+                        className="hover:bg-emerald-200 dark:hover:bg-emerald-900 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -200,6 +278,8 @@ export default function AdminAnnouncementPage() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Preparing system
                 broadcast...
               </>
+            ) : targetGroup === "individual" ? (
+              `Send to ${targetEmails.length} Selected Recipient(s)`
             ) : (
               "Send System Broadcast"
             )}
