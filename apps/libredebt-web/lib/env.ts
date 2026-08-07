@@ -53,6 +53,8 @@ export const env = createEnv({
     // ─── Stage 5: Paystack (optional until Stage 5) ───────────────────
     PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
 
+    CRON_SECRET: z.string().min(1).optional(),
+
     // ─── Stage 5: Stripe (optional until Stage 5) ────────────────────
     // STRIPE_SECRET_KEY: z.string().min(1).optional(),
 
@@ -93,6 +95,7 @@ export const env = createEnv({
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
     // STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
