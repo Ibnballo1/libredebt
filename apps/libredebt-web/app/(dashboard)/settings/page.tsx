@@ -53,7 +53,14 @@ export default async function SettingsPage({
             <div className="mt-6">
               {tab === "profile" && (
                 <ProfileTab
-                  user={{ name: user.name, email: user.email, currency }}
+                  user={{
+                    name: user.name,
+                    email: user.email,
+                    currency,
+                    phone: user.phone,
+                    smsEnabled: user.smsEnabled ?? undefined,
+                    whatsappEnabled: user.whatsappEnabled ?? undefined,
+                  }}
                 />
               )}
               {tab === "billing" && (

@@ -1,20 +1,9 @@
 /**
- * server/actions/profile.actions.ts
+ * server/actions/profile.actions.ts — UPDATED
  *
- * Account-level Server Actions: update profile info, change password,
- * delete account.
- *
- * PASSWORD CHANGE uses BetterAuth's server API directly (auth.api.*)
- * rather than reimplementing hashing/verification — BetterAuth already
- * owns the `accounts` table where the password hash lives.
- *
- * ACCOUNT DELETION is a hard, irreversible action. It requires the user
- * to type "DELETE" as a confirmation phrase (checked by Zod's z.literal)
- * and cascades through BetterAuth's session/account deletion, then
- * archives (never hard-deletes) the user's debts — ledger entries must
- * survive even account deletion, per our append-only principle. The
- * user row itself transitions to a soft-deleted state rather than being
- * removed, so financial records remain auditable.
+ * updateProfileAction converts empty phone string → null and enforces
+ * the rule: if no phone, both messaging channels are forced off.
+ * All other actions unchanged.
  */
 
 "use server";
@@ -36,9 +25,11 @@ import {
 
 const authAction = createSafeActionClient().use(async ({ next }) => {
   const user = await requireUser();
+
   if (!user) {
-    redirect("/login"); // ✅ ONLY place redirect happens
+    redirect("/login");
   }
+
   return next({ ctx: { userId: user.id } });
 });
 
@@ -47,11 +38,23 @@ const authAction = createSafeActionClient().use(async ({ next }) => {
 export const updateProfileAction = authAction
   .inputSchema(updateProfileSchema)
   .action(async ({ parsedInput, ctx }) => {
+    // Normalise phone: empty string or whitespace-only → null
+    const phone = parsedInput.phone?.trim() || null;
+
+    // If no phone number, force both messaging channels off
+    const smsEnabled = phone ? (parsedInput.smsEnabled ?? false) : false;
+    const whatsappEnabled = phone
+      ? (parsedInput.whatsappEnabled ?? false)
+      : false;
+
     await db
       .update(users)
       .set({
         name: parsedInput.name,
         currency: parsedInput.currency,
+        phone,
+        smsEnabled,
+        whatsappEnabled,
         updatedAt: new Date(),
       })
       .where(eq(users.id, ctx.userId));
@@ -97,17 +100,11 @@ export const deleteAccountAction = authAction
     const { userId } = ctx;
 
     await db.transaction(async (tx) => {
-      // Archive all active debts — never delete; ledger history must
-      // remain queryable for financial audit purposes even after the
-      // account is gone.
       await tx
         .update(debts)
         .set({ status: "archived", updatedAt: new Date() })
         .where(and(eq(debts.userId, userId), eq(debts.status, "active")));
 
-      // Soft-delete: anonymize PII but keep the row so subscriptions/
-      // ledger foreign keys remain valid. A real implementation would
-      // add a `deletedAt` column; for now we clear identifying fields.
       await tx
         .update(users)
         .set({
@@ -118,11 +115,8 @@ export const deleteAccountAction = authAction
         .where(eq(users.id, userId));
     });
 
-    // Revoke all sessions for this user via BetterAuth
-    // BetterAuth's revokeSessions endpoint does not accept a body here;
-    // it revokes sessions for the user identified by the authorization
-    // headers, so pass only headers.
     await auth.api.revokeSessions({
+      // body: { userId },
       headers: await headers(),
     });
 

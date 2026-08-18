@@ -40,6 +40,16 @@ export const users = pgTable("users", {
   reminderWeeklySummaryEnabled: boolean("reminder_weekly_summary_enabled")
     .notNull()
     .default(true),
+
+  // ── Phone + messaging channels ───────────────────────────────────────────
+  /** International format, e.g. 2348031234567. User-provided, nullable. */
+  phone: text("phone"),
+
+  /** User has opted in to receive SMS reminders via Termii */
+  smsEnabled: boolean("sms_enabled").notNull().default(false),
+
+  /** User has opted in to receive WhatsApp reminders via Termii */
+  whatsappEnabled: boolean("whatsapp_enabled").notNull().default(false),
 });
 
 export const sessions = pgTable(

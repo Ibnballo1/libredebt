@@ -1,5 +1,10 @@
 /**
- * server/validators/profile.schema.ts
+ * server/validators/profile.schema.ts — UPDATED (Zod v4 compatible)
+ *
+ * Kept schema shapes simple — no .transform(), no .default(), no chained
+ * .optional().nullable() — because @hookform/resolvers cannot infer those
+ * correctly with Zod v4. Defaults and null-coercion happen in the component
+ * (form defaultValues) and in the action (.set() call).
  */
 
 import { z } from "zod";
@@ -15,7 +20,15 @@ export const updateProfileSchema = z.object({
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(80, "Name is too long"),
+
   currency: z.enum(currencyCodes),
+
+  /** Empty string means "no phone" — action converts "" → null */
+  phone: z.string().max(20, "Phone number is too long").optional(),
+
+  smsEnabled: z.boolean().optional(),
+
+  whatsappEnabled: z.boolean().optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

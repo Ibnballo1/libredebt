@@ -29,8 +29,10 @@ type OverdueEmailProps = {
   creditor: string;
   daysOverdue: number;
   currentBalanceFormatted: string;
+  currency: string;
   recordPaymentUrl: string;
   unsubscribeUrl: string;
+  dashboardUrl: string;
 };
 
 export function OverdueEmail({
@@ -39,8 +41,10 @@ export function OverdueEmail({
   creditor,
   daysOverdue,
   currentBalanceFormatted,
+  currency,
   recordPaymentUrl,
   unsubscribeUrl,
+  dashboardUrl,
 }: OverdueEmailProps) {
   return (
     <Html>
@@ -51,9 +55,11 @@ export function OverdueEmail({
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          {/* Header */}
+          {/* Header with Dashboard Link */}
           <Section style={{ marginBottom: 24 }}>
-            <Text style={styles.logoText}>LibreDebt</Text>
+            <Link href={dashboardUrl} style={{ textDecoration: "none" }}>
+              <Text style={styles.logoText}>LibreDebt</Text>
+            </Link>
           </Section>
 
           <Section style={{ marginBottom: 24 }}>
@@ -79,29 +85,43 @@ export function OverdueEmail({
             <Text style={styles.cardValue}>{debtName}</Text>
             <Hr style={{ borderColor: "#FEE2E2", margin: "12px 0" }} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <tr>
-                <td>
-                  <Text style={styles.cardLabel}>Days past due</Text>
-                  <Text
-                    style={{ ...styles.cardValue, color: "#EF4444", margin: 0 }}
-                  >
-                    {daysOverdue} {daysOverdue === 1 ? "day" : "days"}
-                  </Text>
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  <Text style={styles.cardLabel}>Current balance</Text>
-                  <Text style={{ ...styles.cardValue, margin: 0 }}>
-                    {currentBalanceFormatted}
-                  </Text>
-                </td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td>
+                    <Text style={styles.cardLabel}>Days past due</Text>
+                    <Text
+                      style={{
+                        ...styles.cardValue,
+                        color: "#EF4444",
+                        margin: 0,
+                      }}
+                    >
+                      {daysOverdue} {daysOverdue === 1 ? "day" : "days"}
+                    </Text>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <Text style={styles.cardLabel}>
+                      Current balance ({currency})
+                    </Text>
+                    <Text style={{ ...styles.cardValue, margin: 0 }}>
+                      {currentBalanceFormatted}
+                    </Text>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </Section>
 
+          {/* CTA & Dashboard Link */}
           <Section style={{ textAlign: "center", marginTop: 28 }}>
             <Button style={styles.button} href={recordPaymentUrl}>
               Record Payment
             </Button>
+            <Text style={{ margin: "12px 0 0" }}>
+              <Link href={dashboardUrl} style={styles.secondaryLink}>
+                View Dashboard →
+              </Link>
+            </Text>
           </Section>
 
           <Hr style={styles.divider} />
@@ -192,6 +212,12 @@ const styles = {
     padding: "12px 28px",
     textDecoration: "none",
     display: "inline-block",
+  },
+  secondaryLink: {
+    fontSize: 12,
+    color: "#475569",
+    textDecoration: "underline",
+    fontWeight: 500,
   },
   divider: {
     borderColor: "#E2E8F0",

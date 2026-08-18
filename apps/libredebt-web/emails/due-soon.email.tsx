@@ -22,7 +22,6 @@ import {
   Heading,
   Hr,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -34,22 +33,28 @@ type DueSoonEmailProps = {
   userName: string;
   debtName: string;
   creditor: string;
+  dueDay: number;
   daysUntilDue: number;
   minimumPaymentFormatted: string;
   currentBalanceFormatted: string;
+  currency: string;
   recordPaymentUrl: string;
   unsubscribeUrl: string;
+  dashboardUrl: string;
 };
 
 export function DueSoonEmail({
   userName,
   debtName,
   creditor,
+  dueDay,
   daysUntilDue,
   minimumPaymentFormatted,
   currentBalanceFormatted,
+  currency,
   recordPaymentUrl,
   unsubscribeUrl,
+  dashboardUrl,
 }: DueSoonEmailProps) {
   const daysText =
     daysUntilDue === 1
@@ -62,24 +67,29 @@ export function DueSoonEmail({
     <Html>
       <Head />
       <Preview>
-        Your {debtName} payment is due {daysText} — {minimumPaymentFormatted}
+        Your {debtName} payment is due {daysText} — {minimumPaymentFormatted} (
+        {currency})
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          {/* Header */}
+          {/* Header with Dashboard Link */}
           <Section style={styles.header}>
-            <table style={{ borderCollapse: "collapse" }}>
-              <tr>
-                <td>
-                  <div style={styles.logoMark}>
-                    <div style={styles.logoMarkInner} />
-                  </div>
-                </td>
-                <td style={{ paddingLeft: 8 }}>
-                  <Text style={styles.logoText}>LibreDebt</Text>
-                </td>
-              </tr>
-            </table>
+            <Link href={dashboardUrl} style={{ textDecoration: "none" }}>
+              <table style={{ borderCollapse: "collapse" }}>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div style={styles.logoMark}>
+                        <div style={styles.logoMarkInner} />
+                      </div>
+                    </td>
+                    <td style={{ paddingLeft: 8 }}>
+                      <Text style={styles.logoText}>LibreDebt</Text>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Link>
           </Section>
 
           {/* Tag */}
@@ -104,51 +114,66 @@ export function DueSoonEmail({
           {/* Debt summary card */}
           <Section style={styles.card}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <tr>
-                <td style={styles.cardLabel}>Debt</td>
-                <td style={{ ...styles.cardLabel, textAlign: "right" }}>Due</td>
-              </tr>
-              <tr>
-                <td style={styles.cardValue}>{debtName}</td>
-                <td
-                  style={{
-                    ...styles.cardValue,
-                    textAlign: "right",
-                    color: "#F59E0B",
-                  }}
-                >
-                  {daysText}
-                </td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td style={styles.cardLabel}>Debt</td>
+                  <td style={{ ...styles.cardLabel, textAlign: "right" }}>
+                    Due Date
+                  </td>
+                </tr>
+                <tr>
+                  <td style={styles.cardValue}>{debtName}</td>
+                  <td
+                    style={{
+                      ...styles.cardValue,
+                      textAlign: "right",
+                      color: "#F59E0B",
+                    }}
+                  >
+                    Day {dueDay} ({daysText})
+                  </td>
+                </tr>
+              </tbody>
             </table>
             <Hr style={{ borderColor: "#F1F5F9", margin: "14px 0" }} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <tr>
-                <td>
-                  <Text style={styles.cardLabel}>Minimum payment</Text>
-                  <Text
-                    style={{ ...styles.cardValue, fontSize: 20, margin: 0 }}
-                  >
-                    {minimumPaymentFormatted}
-                  </Text>
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  <Text style={styles.cardLabel}>Current balance</Text>
-                  <Text
-                    style={{ ...styles.cardValue, fontSize: 20, margin: 0 }}
-                  >
-                    {currentBalanceFormatted}
-                  </Text>
-                </td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td>
+                    <Text style={styles.cardLabel}>
+                      Minimum payment ({currency})
+                    </Text>
+                    <Text
+                      style={{ ...styles.cardValue, fontSize: 20, margin: 0 }}
+                    >
+                      {minimumPaymentFormatted}
+                    </Text>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <Text style={styles.cardLabel}>
+                      Current balance ({currency})
+                    </Text>
+                    <Text
+                      style={{ ...styles.cardValue, fontSize: 20, margin: 0 }}
+                    >
+                      {currentBalanceFormatted}
+                    </Text>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </Section>
 
-          {/* CTA */}
+          {/* CTA & Dashboard Link */}
           <Section style={{ textAlign: "center", marginTop: 28 }}>
             <Button style={styles.button} href={recordPaymentUrl}>
               Record Payment in LibreDebt
             </Button>
+            <Text style={{ marginTop: 12, margin: "12px 0 0" }}>
+              <Link href={dashboardUrl} style={styles.secondaryLink}>
+                View all debts on Dashboard →
+              </Link>
+            </Text>
           </Section>
 
           <Hr style={styles.divider} />
@@ -264,6 +289,12 @@ const styles = {
     padding: "12px 28px",
     textDecoration: "none",
     display: "inline-block",
+  },
+  secondaryLink: {
+    fontSize: 12,
+    color: "#475569",
+    textDecoration: "underline",
+    fontWeight: 500,
   },
   divider: {
     borderColor: "#E2E8F0",

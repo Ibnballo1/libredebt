@@ -120,6 +120,22 @@ export const auth = betterAuth({
         required: false,
         input: true,
       },
+      phone: {
+        type: "string",
+        defaultValue: null,
+      },
+      smsEnabled: {
+        type: "boolean",
+        defaultValue: false,
+        required: false,
+        input: true,
+      },
+      whatsappEnabled: {
+        type: "boolean",
+        defaultValue: false,
+        required: false,
+        input: true,
+      },
       onboardingCompleted: {
         type: "boolean",
         defaultValue: false,

@@ -36,9 +36,14 @@ type WeeklySummaryEmailProps = {
   userName: string;
   totalRepaidFormatted: string;
   totalRemainingFormatted: string;
+  totalOutstandingMinor: number;
   overallProgressPercent: number;
   debts: WeeklySummaryDebt[];
+  activeDebts: number;
+  paymentsThisWeek: number;
+  dueThisWeek: string[];
   upcomingDueCount: number;
+  currency: string;
   dashboardUrl: string;
   unsubscribeUrl: string;
 };
@@ -47,9 +52,14 @@ export function WeeklySummaryEmail({
   userName,
   totalRepaidFormatted,
   totalRemainingFormatted,
+  totalOutstandingMinor,
   overallProgressPercent,
   debts,
+  activeDebts,
+  paymentsThisWeek,
+  dueThisWeek,
   upcomingDueCount,
+  currency,
   dashboardUrl,
   unsubscribeUrl,
 }: WeeklySummaryEmailProps) {
@@ -62,9 +72,11 @@ export function WeeklySummaryEmail({
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          {/* Header */}
+          {/* Header with Dashboard Link */}
           <Section style={{ marginBottom: 24 }}>
-            <Text style={styles.logoText}>LibreDebt</Text>
+            <Link href={dashboardUrl} style={{ textDecoration: "none" }}>
+              <Text style={styles.logoText}>LibreDebt</Text>
+            </Link>
           </Section>
 
           <Section style={{ marginBottom: 24 }}>
@@ -74,7 +86,11 @@ export function WeeklySummaryEmail({
           <Heading style={styles.heading}>Good morning, {userName}.</Heading>
 
           <Text style={styles.body_text}>
-            Here&apos;s where your debt repayment stands this week.
+            Here&apos;s where your debt repayment stands this week across your{" "}
+            <strong>
+              {activeDebts} active {activeDebts === 1 ? "debt" : "debts"}
+            </strong>
+            .
             {upcomingDueCount > 0
               ? ` You have ${upcomingDueCount} payment${upcomingDueCount === 1 ? "" : "s"} coming up.`
               : " No payments are due in the next 7 days."}
@@ -84,12 +100,15 @@ export function WeeklySummaryEmail({
           <Section style={styles.statsRow}>
             <Row>
               <Column style={styles.statCell}>
-                <Text style={styles.statLabel}>Total Repaid</Text>
+                <Text style={styles.statLabel}>Total Repaid ({currency})</Text>
                 <Text style={styles.statValue}>{totalRepaidFormatted}</Text>
               </Column>
               <Column style={styles.statCell}>
-                <Text style={styles.statLabel}>Remaining</Text>
+                <Text style={styles.statLabel}>Remaining ({currency})</Text>
                 <Text style={styles.statValue}>{totalRemainingFormatted}</Text>
+                <Text style={styles.statMinor}>
+                  ({totalOutstandingMinor.toLocaleString()} minor units)
+                </Text>
               </Column>
               <Column style={{ ...styles.statCell, borderRight: "none" }}>
                 <Text style={styles.statLabel}>Progress</Text>
@@ -122,10 +141,25 @@ export function WeeklySummaryEmail({
             </div>
           </Section>
 
+          {/* Activity & Due This Week */}
+          <Section style={styles.activityCard}>
+            <Text style={styles.sectionLabel}>This Week&apos;s Snapshot</Text>
+            <Text style={styles.activityText}>
+              • <strong>Payments Made:</strong> {paymentsThisWeek} payment
+              {paymentsThisWeek === 1 ? "" : "s"} recorded
+            </Text>
+            <Text style={{ ...styles.activityText, margin: "6px 0 0" }}>
+              • <strong>Due This Week:</strong>{" "}
+              {dueThisWeek.length > 0 ? dueThisWeek.join(", ") : "None"}
+            </Text>
+          </Section>
+
           {/* Individual debts */}
           {debts.length > 0 && (
             <Section style={{ marginTop: 24 }}>
-              <Text style={styles.sectionLabel}>Your Active Debts</Text>
+              <Text style={styles.sectionLabel}>
+                Your Active Debts ({activeDebts})
+              </Text>
               {debts.map((debt, i) => (
                 <div
                   key={i}
@@ -136,32 +170,36 @@ export function WeeklySummaryEmail({
                   }}
                 >
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <tr>
-                      <td>
-                        <Text style={styles.debtName}>{debt.name}</Text>
-                        {debt.dueDay && (
-                          <Text style={styles.debtMeta}>
-                            Due {debt.dueDay}th of month
-                          </Text>
-                        )}
-                      </td>
-                      <td style={{ textAlign: "right", verticalAlign: "top" }}>
-                        <Text style={styles.debtBalance}>
-                          {debt.currentBalanceFormatted}
-                        </Text>
-                        <Text
-                          style={{
-                            ...styles.debtMeta,
-                            color:
-                              debt.progressPercent >= 50
-                                ? "#10B981"
-                                : "#94A3B8",
-                          }}
+                    <tbody>
+                      <tr>
+                        <td>
+                          <Text style={styles.debtName}>{debt.name}</Text>
+                          {debt.dueDay && (
+                            <Text style={styles.debtMeta}>
+                              Due {debt.dueDay}th of month
+                            </Text>
+                          )}
+                        </td>
+                        <td
+                          style={{ textAlign: "right", verticalAlign: "top" }}
                         >
-                          {debt.progressPercent}% repaid
-                        </Text>
-                      </td>
-                    </tr>
+                          <Text style={styles.debtBalance}>
+                            {debt.currentBalanceFormatted}
+                          </Text>
+                          <Text
+                            style={{
+                              ...styles.debtMeta,
+                              color:
+                                debt.progressPercent >= 50
+                                  ? "#10B981"
+                                  : "#94A3B8",
+                            }}
+                          >
+                            {debt.progressPercent}% repaid
+                          </Text>
+                        </td>
+                      </tr>
+                    </tbody>
                   </table>
                   {/* Mini progress bar */}
                   <div
@@ -263,7 +301,7 @@ const styles = {
   },
   statCell: {
     borderRight: "1px solid #E2E8F0",
-    padding: "0 20px",
+    padding: "0 16px",
     textAlign: "center" as const,
   },
   statLabel: {
@@ -280,6 +318,23 @@ const styles = {
     color: "#0F172A",
     margin: 0,
     fontVariantNumeric: "tabular-nums",
+  },
+  statMinor: {
+    fontSize: 9,
+    color: "#94A3B8",
+    margin: "2px 0 0",
+  },
+  activityCard: {
+    backgroundColor: "#F8FAFC",
+    border: "1px solid #E2E8F0",
+    borderRadius: 8,
+    padding: "16px 20px",
+    marginTop: 16,
+  },
+  activityText: {
+    fontSize: 13,
+    color: "#334155",
+    margin: 0,
   },
   sectionLabel: {
     fontSize: 9,
